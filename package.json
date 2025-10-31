@@ -7,7 +7,7 @@
     "node": "18"
   },
   "scripts": {
-    "start": "node servis.js",
+    "start": "node server.js",
     "deploy": "firebase deploy --only functions",
     "lint": "eslint ."
   },
