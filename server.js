@@ -77,6 +77,11 @@ app.post('/get-snap-token', (req, res) => {
     });
 });
 
+// ✅ Tambahkan ini biar gak “Cannot GET /”
+app.get('/', (req, res) => {
+  res.send('🚀 Server Midtrans kamu sudah aktif dan siap dipakai!');
+});
+
 // Static files PALING AKHIR
 app.use(express.static('.'));
 
@@ -91,3 +96,4 @@ app.listen(port, () => {
   console.log(`📱 Open http://localhost:${port} in your browser`);
   console.log(`🔧 Debug mode: ALL requests will be logged`);
 });
+
