@@ -1,21 +1,18 @@
 {
-  "name": "functions",
+  "name": "oleh2inpos-backend",
   "version": "1.0.0",
-  "description": "Firebase Functions backend for Midtrans payment gateway",
-  "main": "index.js",
+  "description": "Backend server for Midtrans payment gateway (Express on Render)",
+  "main": "server.js",
   "engines": {
     "node": "18"
   },
   "scripts": {
-    "start": "node server.js",
-    "deploy": "firebase deploy --only functions",
-    "lint": "eslint ."
+    "start": "node server.js"
   },
   "dependencies": {
-    "express": "^4.18.2",
+    "express": "^4.19.2",
     "cors": "^2.8.5",
-    "midtrans-client": "^1.4.3",
-    "firebase-functions": "^4.4.0",
-    "firebase-admin": "^11.10.0"
+    "dotenv": "^16.4.5",
+    "midtrans-client": "^1.4.3"
   }
 }
