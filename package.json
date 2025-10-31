@@ -7,7 +7,7 @@
     "node": "18"
   },
   "scripts": {
-    "start": "firebase emulators:start --only functions",
+    "start": "node servis.js",
     "deploy": "firebase deploy --only functions",
     "lint": "eslint ."
   },
