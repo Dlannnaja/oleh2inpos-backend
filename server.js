@@ -9,7 +9,7 @@ const port = process.env.PORT || 3000;
 // ✅ CORS Configuration yang Benar
 const corsOptions = {
   origin: [
-    'https://oleh2in-pos-f5bb3.web.app', // Domain Firebase Hosting Anda
+    'https://oleh2in-pos-new.web.app', // Domain Firebase Hosting Anda
     'http://localhost:5000',
     'http://localhost:3000',
     'http://127.0.0.1:5500'
@@ -139,3 +139,4 @@ app.listen(port, () => {
   console.log(`📱 Environment: ${process.env.NODE_ENV || 'development'}`);
   console.log(`🔧 Debug mode: ALL requests will be logged`);
 });
+
