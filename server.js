@@ -36,7 +36,7 @@ if (!process.env.MIDTRANS_SERVER_KEY || !process.env.MIDTRANS_CLIENT_KEY) {
 
 // Midtrans config
 const snap = new midtransClient.Snap({
-  isProduction: process.env.NODE_ENV === 'production',
+  isProduction: process.env.NODE_ENV === 'development',
   serverKey: process.env.MIDTRANS_SERVER_KEY,
   clientKey: process.env.MIDTRANS_CLIENT_KEY
 });
@@ -192,3 +192,4 @@ app.listen(port, () => {
   console.log(`📱 Open http://localhost:${port}`);
   console.log(`📱 Test Midtrans: http://localhost:${port}/test-midtrans`);
 });
+
