@@ -127,5 +127,4 @@ app.listen(port, () => {
   console.log(`📱 Environment: ${process.env.NODE_ENV || 'development'}`);
   console.log(`📱 Open http://localhost:${port}`);
 });
-  console.log(`📱 Open http://localhost:${port}/test`);
-});
+
