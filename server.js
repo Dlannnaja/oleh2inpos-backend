@@ -6,7 +6,7 @@ const midtransClient = require('midtrans-client');
 const app = express();
 const port = process.env.PORT || 3000;
 
-// ✅ CORS Configuration yang Benar
+// ✅ Middleware CORS yang spesifik
 const corsOptions = {
   origin: [
     'https://oleh2in-pos-new.web.app', // Domain Firebase Hosting Anda
@@ -14,21 +14,18 @@ const corsOptions = {
     'http://localhost:3000',
     'http://127.0.0.1:5500'
   ],
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization'],
+  methods: ['GET', 'POST', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', ''],
   credentials: true // Penting untuk cookies/auth
 };
 
 app.use(cors(corsOptions));
 
-// Handle preflight requests
-app.options('*', cors(corsOptions));
-
 app.use(express.json());
 
 // Debug middleware
 app.use((req, res, next) => {
-  console.log(`🔍 ${req.method} ${req.url} from ${req.get('Origin') || 'Unknown'}`);
+  console.log(`🔍 ${req.method} ${req.url} from ${req.get('Origin')}`);
   next();
 });
 
@@ -36,36 +33,17 @@ app.use((req, res, next) => {
 const snap = new midtransClient.Snap({
   isProduction: process.env.NODE_ENV === 'production',
   serverKey: process.env.MIDTRANS_SERVER_KEY,
+  // Ganti dengan environment variable
   clientKey: process.env.MIDTRANS_CLIENT_KEY
-});
-
-// Health check endpoint
-app.get('/', (req, res) => {
-  res.json({
-    status: 'active',
-    message: '🚀 INDOCART Backend Server is running!',
-    timestamp: new Date().toISOString(),
-    origin: req.get('Origin')
-  });
-});
-
-// Test endpoint
-app.get('/test', (req, res) => {
-  res.json({
-    message: 'Backend is working!',
-    time: new Date().toISOString(),
-    environment: process.env.NODE_ENV || 'development',
-    origin: req.get('Origin')
-  });
 });
 
 // API endpoint untuk mendapatkan Snap Token
 app.post('/get-snap-token', (req, res) => {
   console.log('🎯 POST /get-snap-token RECEIVED!');
   console.log('📋 Request body:', JSON.stringify(req.body, null, 2));
-
+  
   const { transaction_details, customer_details, item_details } = req.body;
-
+  
   // Validasi data
   if (!transaction_details || !transaction_details.order_id || !transaction_details.gross_amount) {
     return res.status(400).json({ 
@@ -74,7 +52,7 @@ app.post('/get-snap-token', (req, res) => {
       message: 'Missing required fields: order_id, gross_amount'
     });
   }
-
+  
   const parameter = {
     transaction_details,
     customer_details: customer_details || {
@@ -86,12 +64,12 @@ app.post('/get-snap-token', (req, res) => {
   };
 
   console.log('📤 Sending to Midtrans...');
-
+  
   snap.createTransaction(parameter)
     .then((transaction) => {
       console.log('✅ SUCCESS! Token created');
       console.log('🔑 Token:', transaction.token.substring(0, 20) + '...');
-
+      
       res.json({
         success: true,
         token: transaction.token,
@@ -109,13 +87,31 @@ app.post('/get-snap-token', (req, res) => {
 
 // API endpoint untuk notifikasi dari Midtrans (webhook)
 app.post('/midtrans-notification', (req, res) => {
-  console.log('🔔 Midtrans notification received:', JSON.stringify(req.body, null, 2));
+  console.log('🔔� Midtrans notification received:', JSON.stringify(req.body, null, 2));
+  
+  // Di sini Anda bisa:
+  // 1. Validasi signature dari Midtrans
+  // 2. Update status pembayaran di database
+  // 3. Kirim notifikasi ke frontend via WebSocket/Firebase
   
   res.status(200).json({ 
     success: true,
     message: 'Notification received'
   });
 });
+
+// Health check endpoint
+app.get('/', (req, res) => {
+  res.json({
+    status: 'active',
+    message: '🚀� INDOCART Backend Server is running!',
+    timestamp: new Date().toISOString(),
+    origin: req.get('Origin')
+  });
+});
+
+// Static files PALING AKHIR
+app.use(express.static('public'));
 
 // Error handler
 app.use((err, req, res, next) => {
@@ -126,17 +122,10 @@ app.use((err, req, res, next) => {
   });
 });
 
-// 404 handler
-app.use((req, res) => {
-  res.status(404).json({
-    success: false,
-    error: 'Endpoint not found'
-  });
-});
-
 app.listen(port, () => {
-  console.log(`🚀 INDOCART Backend Server running at http://localhost:${port}`);
+  console.log(`🚀 Server running at http://localhost:${port}`);
   console.log(`📱 Environment: ${process.env.NODE_ENV || 'development'}`);
-  console.log(`🔧 Debug mode: ALL requests will be logged`);
+  console.log(`📱 Open http://localhost:${port}`);
 });
-
+  console.log(`📱 Open http://localhost:${port}/test`);
+});
