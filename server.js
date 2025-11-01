@@ -9,7 +9,7 @@ const port = process.env.PORT || 3000;
 // ✅ Middleware CORS yang spesifik
 const corsOptions = {
   origin: [
-    'https://oleh2in-pos-new.web.app', // Domain Firebase Hosting Anda
+    'https://oleh2in-pos.web.app', // Domain Firebase Hosting Anda
     'http://localhost:5000',
     'http://localhost:3000',
     'http://127.0.0.1:5500'
@@ -128,6 +128,7 @@ app.listen(port, () => {
   console.log(`📱 Open http://localhost:${port}`);
   console.log('📱 Open http://localhost:${port}/test');
 });
+
 
 
 
