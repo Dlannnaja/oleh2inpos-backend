@@ -34,9 +34,9 @@ if (!process.env.MIDTRANS_SERVER_KEY || !process.env.MIDTRANS_CLIENT_KEY) {
   console.error('Please set MIDTRANS_SERVER_KEY and MIDTRANS_CLIENT_KEY in your environment');
 }
 
-// Midtrans config
+// ✅ Midtrans config YANG SUDAH DIPERBAIKI
 const snap = new midtransClient.Snap({
-  isProduction: process.env.NODE_ENV === 'development',
+  isProduction: process.env.NODE_ENV === 'production', // ✅ BENAR SEKARANG!
   serverKey: process.env.MIDTRANS_SERVER_KEY,
   clientKey: process.env.MIDTRANS_CLIENT_KEY
 });
@@ -192,4 +192,3 @@ app.listen(port, () => {
   console.log(`📱 Open http://localhost:${port}`);
   console.log(`📱 Test Midtrans: http://localhost:${port}/test-midtrans`);
 });
-
