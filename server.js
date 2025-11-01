@@ -9,14 +9,14 @@ const port = process.env.PORT || 3000;
 // ✅ Middleware CORS yang spesifik
 const corsOptions = {
   origin: [
-    'https://oleh2in-pos.web.app', // Domain Firebase Hosting Anda
+    'https://oleh2in-pos.web.app',
     'http://localhost:5000',
     'http://localhost:3000',
     'http://127.0.0.1:5500'
   ],
   methods: ['GET', 'POST', 'OPTIONS'],
   allowedHeaders: ['Content-Type', ''],
-  credentials: true // Penting untuk cookies/auth
+  credentials: true
 };
 
 app.use(cors(corsOptions));
@@ -31,14 +31,33 @@ app.use((req, res, next) => {
 // ✅ CEK ENVIRONMENT VARIABLES
 if (!process.env.MIDTRANS_SERVER_KEY || !process.env.MIDTRANS_CLIENT_KEY) {
   console.error('❌ ERROR: Midtrans environment variables not set!');
-  console.error('Please set MIDTRANS_SERVER_KEY and MIDTRANS_CLIENT_KEY in your environment');
 }
 
-// ✅ TEST MIDTRANS ENDPOINT (PALING ATAS)
+// Midtrans config YANG SUDAH DIPERBAIKI
+const snap = new midtransClient.Snap({
+  isProduction: process.env.NODE_ENV === 'production',
+  serverKey: process.env.MIDTRANS_SERVER_KEY,
+  clientKey: process.env.MIDTRANS_CLIENT_KEY
+});
+
+// ✅ CHECK ENV ENDPOINT (PALING ATAS)
+app.get('/check-env', (req, res) => {
+  res.json({
+    message: "Checking environment variables on Render server",
+    node_env: process.env.NODE_ENV,
+    server_key_exists: !!process.env.MIDTRANS_SERVER_KEY,
+    server_key_length: process.env.MIDTRANS_SERVER_KEY ? process.env.MIDTRANS_SERVER_KEY.length : 0,
+    server_key_preview: process.env.MIDTRANS_SERVER_KEY ? process.env.MIDTRANS_SERVER_KEY.substring(0, 20) + '...' : 'NOT_SET',
+    client_key_exists: !!process.env.MIDTRANS_CLIENT_KEY,
+    client_key_length: process.env.MIDTRANS_CLIENT_KEY ? process.env.MIDTRANS_CLIENT_KEY.length : 0,
+    client_key_preview: process.env.MIDTRANS_CLIENT_KEY ? process.env.MIDTRANS_CLIENT_KEY.substring(0, 20) + '...' : 'NOT_SET',
+  });
+});
+
+// ✅ TEST MIDTRANS ENDPOINT
 app.get('/test-midtrans', (req, res) => {
   console.log('🧪 Testing Midtrans connection...');
   
-  // Cek apakah environment variables sudah diatur
   if (!process.env.MIDTRANS_SERVER_KEY) {
     return res.status(500).json({
       success: false,
@@ -84,19 +103,10 @@ app.get('/test-midtrans', (req, res) => {
     });
 });
 
-// ✅ Midtrans config YANG SUDAH DIPERBAIKI
-const snap = new midtransClient.Snap({
-  isProduction: process.env.NODE_ENV === 'production', // ✅ BENAR SEKARANG!
-  serverKey: process.env.MIDTRANS_SERVER_KEY,
-  clientKey: process.env.MIDTRANS_CLIENT_KEY
-});
-
 // API endpoint untuk mendapatkan Snap Token
 app.post('/get-snap-token', (req, res) => {
   console.log('🎯 POST /get-snap-token RECEIVED!');
-  console.log('📋 Request body:', JSON.stringify(req.body, null, 2));
   
-  // Cek apakah environment variables sudah diatur
   if (!process.env.MIDTRANS_SERVER_KEY) {
     return res.status(500).json({
       success: false,
@@ -106,7 +116,6 @@ app.post('/get-snap-token', (req, res) => {
   
   const { transaction_details, customer_details, item_details } = req.body;
   
-  // Validasi data
   if (!transaction_details || !transaction_details.order_id || !transaction_details.gross_amount) {
     return res.status(400).json({ 
       success: false,
@@ -130,8 +139,6 @@ app.post('/get-snap-token', (req, res) => {
   snap.createTransaction(parameter)
     .then((transaction) => {
       console.log('✅ SUCCESS! Token created');
-      console.log('🔑 Token:', transaction.token.substring(0, 20) + '...');
-      
       res.json({
         success: true,
         token: transaction.token,
@@ -145,21 +152,6 @@ app.post('/get-snap-token', (req, res) => {
         error: error.message 
       });
     });
-});
-
-// API endpoint untuk notifikasi dari Midtrans (webhook)
-app.post('/midtrans-notification', (req, res) => {
-  console.log('🔔 Midtrans notification received:', JSON.stringify(req.body, null, 2));
-  
-  // Di sini Anda bisa:
-  // 1. Validasi signature dari Midtrans
-  // 2. Update status pembayaran di database
-  // 3. Kirim notifikasi ke frontend via WebSocket/Firebase
-  
-  res.status(200).json({ 
-    success: true,
-    message: 'Notification received'
-  });
 });
 
 // Health check endpoint
@@ -189,7 +181,4 @@ app.use((err, req, res, next) => {
 app.listen(port, () => {
   console.log(`🚀 Server running at http://localhost:${port}`);
   console.log(`📱 Environment: ${process.env.NODE_ENV || 'development'}`);
-  console.log(`📱 Open http://localhost:${port}`);
-  console.log(`📱 Test Midtrans: http://localhost:${port}/test-midtrans`);
 });
-
