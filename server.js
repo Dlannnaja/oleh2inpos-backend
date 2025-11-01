@@ -4,13 +4,14 @@ const express = require('express');
 const cors = require('cors');
 const midtransClient = require('midtrans-client');
 const app = express();
-const port = 3000;
+const port = process.env.PORT || 3000;
 
 // ✅ Middleware CORS yang spesifik (izinkan domain Firebase & lokal)
 const allowedOrigins = [
-  'https://oleh2in-pos-f5bb3.web.app',
+  'https://oleh2in-pos-f5bb3.web.app', // Ganti dengan domain Firebase Hosting Anda
   'http://localhost:5000', // biar bisa test lokal juga
-  'http://localhost:3000'
+  'http://localhost:3000',
+  'http://127.0.0.1:5500' // Untuk Live Server VS Code
 ];
 
 app.use(cors({
@@ -41,22 +42,31 @@ app.use((req, res, next) => {
 
 // Midtrans config
 const snap = new midtransClient.Snap({
-  isProduction: false,
+  isProduction: false, // Ganti ke true untuk production
   serverKey: process.env.MIDTRANS_SERVER_KEY,
   clientKey: process.env.MIDTRANS_CLIENT_KEY
 });
 
-// API endpoint
+// API endpoint untuk mendapatkan Snap Token
 app.post('/get-snap-token', (req, res) => {
   console.log('🎯 POST /get-snap-token RECEIVED!');
   console.log('📋 Request body:', JSON.stringify(req.body, null, 2));
 
   const { transaction_details, customer_details, item_details } = req.body;
 
+  // Validasi data
+  if (!transaction_details || !transaction_details.order_id || !transaction_details.gross_amount) {
+    return res.status(400).json({ error: 'Transaction details are required' });
+  }
+
   const parameter = {
     transaction_details,
-    customer_details,
-    item_details
+    customer_details: customer_details || {
+      first_name: "Customer",
+      email: "customer@example.com",
+      phone: "08123456789"
+    },
+    item_details: item_details || []
   };
 
   console.log('📤 Sending to Midtrans...');
@@ -77,13 +87,23 @@ app.post('/get-snap-token', (req, res) => {
     });
 });
 
-// ✅ Tambahkan ini biar gak “Cannot GET /”
+// API endpoint untuk notifikasi dari Midtrans (webhook)
+app.post('/midtrans-notification', (req, res) => {
+  console.log('🔔 Midtrans notification received:', JSON.stringify(req.body, null, 2));
+  
+  // Di sini Anda bisa memproses notifikasi pembayaran
+  // Misalnya, update status pembayaran di database
+  
+  res.status(200).json({ status: 'ok' });
+});
+
+// ✅ Tambahkan ini biar gak "Cannot GET /"
 app.get('/', (req, res) => {
-  res.send('🚀 Server Midtrans kamu sudah aktif dan siap dipakai!');
+  res.send('🚀 Server Midtrans untuk INDOCART sudah aktif dan siap dipakai!');
 });
 
 // Static files PALING AKHIR
-app.use(express.static('.'));
+app.use(express.static('public'));
 
 // Error handler
 app.use((err, req, res, next) => {
@@ -96,4 +116,3 @@ app.listen(port, () => {
   console.log(`📱 Open http://localhost:${port} in your browser`);
   console.log(`🔧 Debug mode: ALL requests will be logged`);
 });
-
