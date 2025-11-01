@@ -6,45 +6,57 @@ const midtransClient = require('midtrans-client');
 const app = express();
 const port = process.env.PORT || 3000;
 
-// ✅ Middleware CORS yang spesifik (izinkan domain Firebase & lokal)
-const allowedOrigins = [
-  'https://oleh2in-pos-f5bb3.web.app', // Ganti dengan domain Firebase Hosting Anda
-  'http://localhost:5000', // biar bisa test lokal juga
-  'http://localhost:3000',
-  'http://127.0.0.1:5500' // Untuk Live Server VS Code
-];
+// ✅ CORS Configuration yang Benar
+const corsOptions = {
+  origin: [
+    'https://oleh2in-pos-f5bb3.web.app', // Domain Firebase Hosting Anda
+    'http://localhost:5000',
+    'http://localhost:3000',
+    'http://127.0.0.1:5500'
+  ],
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization'],
+  credentials: true // Penting untuk cookies/auth
+};
 
-app.use(cors({
-  origin: function (origin, callback) {
-    // Kalau origin nggak ada (misal dari Postman), tetap izinkan
-    if (!origin) return callback(null, true);
-    if (allowedOrigins.includes(origin)) {
-      return callback(null, true);
-    } else {
-      console.warn('⛔ Blocked by CORS:', origin);
-      return callback(new Error('Not allowed by CORS'));
-    }
-  },
-  methods: ['GET', 'POST', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization']
-}));
+app.use(cors(corsOptions));
+
+// Handle preflight requests
+app.options('*', cors(corsOptions));
 
 app.use(express.json());
 
-// ✅ Handle preflight request (OPTIONS)
-app.options(/.*/, cors());
-
 // Debug middleware
 app.use((req, res, next) => {
-  console.log(`🔍 ${req.method} ${req.url}`);
+  console.log(`🔍 ${req.method} ${req.url} from ${req.get('Origin') || 'Unknown'}`);
   next();
 });
 
 // Midtrans config
 const snap = new midtransClient.Snap({
-  isProduction: false, // Ganti ke true untuk production
+  isProduction: process.env.NODE_ENV === 'production',
   serverKey: process.env.MIDTRANS_SERVER_KEY,
   clientKey: process.env.MIDTRANS_CLIENT_KEY
+});
+
+// Health check endpoint
+app.get('/', (req, res) => {
+  res.json({
+    status: 'active',
+    message: '🚀 INDOCART Backend Server is running!',
+    timestamp: new Date().toISOString(),
+    origin: req.get('Origin')
+  });
+});
+
+// Test endpoint
+app.get('/test', (req, res) => {
+  res.json({
+    message: 'Backend is working!',
+    time: new Date().toISOString(),
+    environment: process.env.NODE_ENV || 'development',
+    origin: req.get('Origin')
+  });
 });
 
 // API endpoint untuk mendapatkan Snap Token
@@ -56,7 +68,11 @@ app.post('/get-snap-token', (req, res) => {
 
   // Validasi data
   if (!transaction_details || !transaction_details.order_id || !transaction_details.gross_amount) {
-    return res.status(400).json({ error: 'Transaction details are required' });
+    return res.status(400).json({ 
+      success: false,
+      error: 'Transaction details are required',
+      message: 'Missing required fields: order_id, gross_amount'
+    });
   }
 
   const parameter = {
@@ -77,13 +93,17 @@ app.post('/get-snap-token', (req, res) => {
       console.log('🔑 Token:', transaction.token.substring(0, 20) + '...');
 
       res.json({
+        success: true,
         token: transaction.token,
         redirect_url: transaction.redirect_url
       });
     })
     .catch((error) => {
       console.error('❌ ERROR:', error.message);
-      res.status(500).json({ error: error.message });
+      res.status(500).json({ 
+        success: false,
+        error: error.message 
+      });
     });
 });
 
@@ -91,28 +111,31 @@ app.post('/get-snap-token', (req, res) => {
 app.post('/midtrans-notification', (req, res) => {
   console.log('🔔 Midtrans notification received:', JSON.stringify(req.body, null, 2));
   
-  // Di sini Anda bisa memproses notifikasi pembayaran
-  // Misalnya, update status pembayaran di database
-  
-  res.status(200).json({ status: 'ok' });
+  res.status(200).json({ 
+    success: true,
+    message: 'Notification received'
+  });
 });
-
-// ✅ Tambahkan ini biar gak "Cannot GET /"
-app.get('/', (req, res) => {
-  res.send('🚀 Server Midtrans untuk INDOCART sudah aktif dan siap dipakai!');
-});
-
-// Static files PALING AKHIR
-app.use(express.static('public'));
 
 // Error handler
 app.use((err, req, res, next) => {
   console.error('❌ SERVER ERROR:', err.message);
-  res.status(500).send('Something broke!');
+  res.status(500).json({ 
+    success: false,
+    error: 'Internal server error'
+  });
+});
+
+// 404 handler
+app.use((req, res) => {
+  res.status(404).json({
+    success: false,
+    error: 'Endpoint not found'
+  });
 });
 
 app.listen(port, () => {
-  console.log(`🚀 Server running at http://localhost:${port}`);
-  console.log(`📱 Open http://localhost:${port} in your browser`);
+  console.log(`🚀 INDOCART Backend Server running at http://localhost:${port}`);
+  console.log(`📱 Environment: ${process.env.NODE_ENV || 'development'}`);
   console.log(`🔧 Debug mode: ALL requests will be logged`);
 });
