@@ -104,55 +104,55 @@ app.get('/test-midtrans', (req, res) => {
     });
 });
 
-// API endpoint untuk mendapatkan Snap Token
-app.post('/get-snap-token', (req, res) => {
+// ✅ API endpoint untuk mendapatkan Snap Token (versi stabil)
+app.post('/get-snap-token', async (req, res) => {
   console.log('🎯 POST /get-snap-token RECEIVED!');
-  
-  if (!process.env.MIDTRANS_SERVER_KEY) {
-    return res.status(500).json({
-      success: false,
-      error: 'Server configuration error: MIDTRANS_SERVER_KEY not set'
-    });
-  }
-  
-  const { transaction_details, customer_details, item_details } = req.body;
-  
-  if (!transaction_details || !transaction_details.order_id || !transaction_details.gross_amount) {
-    return res.status(400).json({ 
-      success: false,
-      error: 'Transaction details are required',
-      message: 'Missing required fields: order_id, gross_amount'
-    });
-  }
-  
-  const parameter = {
-    transaction_details,
-    customer_details: customer_details || {
-      first_name: "Customer",
-      email: "customer@example.com",
-      phone: "08123456789"
-    },
-    item_details: item_details || []
-  };
 
-  console.log('📤 Sending to Midtrans...');
-  
-  snap.createTransaction(parameter)
-    .then((transaction) => {
-      console.log('✅ SUCCESS! Token created');
-      res.json({
-        success: true,
-        token: transaction.token,
-        redirect_url: transaction.redirect_url
-      });
-    })
-    .catch((error) => {
-      console.error('❌ ERROR:', error.message);
-      res.status(500).json({ 
-        success: false,
-        error: error.message 
-      });
+  try {
+    if (!process.env.MIDTRANS_SERVER_KEY) {
+      throw new Error('Server configuration error: MIDTRANS_SERVER_KEY not set');
+    }
+
+    const { transaction_details, customer_details, item_details } = req.body;
+
+    // Validasi input
+    if (!transaction_details?.order_id || !transaction_details?.gross_amount) {
+      throw new Error('Missing required fields: order_id or gross_amount');
+    }
+
+    // Pastikan gross_amount berupa number
+    transaction_details.gross_amount = Number(transaction_details.gross_amount);
+
+    const parameter = {
+      transaction_details,
+      customer_details: customer_details || {
+        first_name: "Customer",
+        email: "customer@example.com",
+        phone: "08123456789"
+      },
+      item_details: item_details || [],
+      credit_card: { secure: true },
+    };
+
+    console.log('📤 Sending to Midtrans:', JSON.stringify(parameter, null, 2));
+
+    // Kirim ke Midtrans
+    const transaction = await snap.createTransaction(parameter);
+
+    console.log('✅ SUCCESS! Token created:', transaction.token);
+
+    res.json({
+      success: true,
+      token: transaction.token,
+      redirect_url: transaction.redirect_url
     });
+  } catch (error) {
+    console.error('❌ ERROR get-snap-token:', error.message);
+    res.status(500).json({
+      success: false,
+      error: error.message,
+    });
+  }
 });
 
 // Health check endpoint
@@ -183,4 +183,5 @@ app.listen(port, () => {
   console.log(`🚀 Server running at http://localhost:${port}`);
   console.log(`📱 Environment: ${process.env.NODE_ENV || 'development'}`);
 });
+
 
