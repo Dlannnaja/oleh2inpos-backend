@@ -9,15 +9,16 @@ const port = process.env.PORT || 3000;
 // ✅ Middleware CORS yang spesifik
 const corsOptions = {
   origin: [
-    'https://oleh2in-pos.web.app',
+    'https://oleh2in-pos-v2.web.app',   // ✅ tambahkan domain hosting barumu
     'http://localhost:5000',
     'http://localhost:3000',
     'http://127.0.0.1:5500'
   ],
   methods: ['GET', 'POST', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', ''],
+  allowedHeaders: ['Content-Type', 'Authorization'], // ✅ tambahkan Authorization, biar lebih aman
   credentials: true
 };
+
 
 app.use(cors(corsOptions));
 app.use(express.json());
@@ -182,3 +183,4 @@ app.listen(port, () => {
   console.log(`🚀 Server running at http://localhost:${port}`);
   console.log(`📱 Environment: ${process.env.NODE_ENV || 'development'}`);
 });
+
