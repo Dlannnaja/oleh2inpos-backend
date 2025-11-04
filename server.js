@@ -87,9 +87,10 @@ app.post('/get-snap-token', async (req, res) => {
   try {
     console.log("📥 BODY DITERIMA:", req.body);
 
-    const { order_id, gross_amount, customer_details, item_details } = req.body;
+    // ✅ Perbaikan: ambil variabel dari transaction_details
+    const { transaction_details, item_details, customer_details } = req.body;
 
-    if (!order_id || !gross_amount) {
+    if (!transaction_details?.order_id || !transaction_details?.gross_amount) {
       return res.status(400).json({
         success: false,
         error: "order_id dan gross_amount wajib dikirim!"
@@ -97,9 +98,9 @@ app.post('/get-snap-token', async (req, res) => {
     }
 
     const transaction = await snap.createTransaction({
-      transaction_details: { order_id, gross_amount },
-      customer_details: customer_details || {},
-      item_details: item_details || []
+      transaction_details,
+      item_details,
+      customer_details
     });
 
     res.json({
@@ -147,4 +148,5 @@ app.listen(port, () => {
   console.log(`🚀 Server running on port ${port}`);
   console.log(`🌍 Environment: ${process.env.NODE_ENV || 'development'}`);
 });
+
 
