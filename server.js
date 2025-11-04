@@ -54,36 +54,50 @@ app.get('/check-env', (req, res) => {
 });
 
 // ✅ TEST MIDTRANS CONNECTION
-app.get('/test-midtrans', async (req, res) => {
+app.get("/test-midtrans", async (req, res) => {
   try {
-    if (!process.env.MIDTRANS_SERVER_KEY) {
-      return res.status(500).json({
-        success: false,
-        error: 'MIDTRANS_SERVER_KEY not set in environment',
-      });
-    }
+    console.log("⚡ Testing Midtrans Snap API");
 
-    const testData = {
+    const parameter = {
       transaction_details: {
-        order_id: 'TEST-' + Date.now(),
-        gross_amount: 1000,
+        order_id: "TEST-" + Date.now(),
+        gross_amount: 1000
       },
+      item_details: [
+        {
+          id: "ITEM-1",
+          price: 1000,
+          quantity: 1,
+          name: "Testing Item"
+        }
+      ],
+      customer_details: {
+        first_name: "Test User",
+        email: "test@example.com",
+        phone: "081234567890"
+      }
     };
 
-    const transaction = await snap.createTransaction(testData);
-    res.json({
+    const transaction = await snap.createTransaction(parameter);
+    console.log("✅ Token:", transaction.token);
+
+    return res.json({
       success: true,
-      message: 'Midtrans connection OK',
-      token: transaction.token,
+      message: "Midtrans test successful",
+      token: transaction.token
     });
+
   } catch (error) {
-    console.error('❌ Midtrans Test Error:', error);
-    res.status(500).json({
+    console.error("❌ ERROR TEST MIDTRANS:", error);
+
+    return res.status(500).json({
       success: false,
-      error: error.message,
+      message: "Failed to test Midtrans",
+      error: error.message
     });
   }
 });
+
 
 // ✅ MAIN SNAP TOKEN ENDPOINT
 app.post('/get-snap-token', async (req, res) => {
@@ -151,6 +165,7 @@ app.listen(port, () => {
   console.log(`🚀 Server running on port ${port}`);
   console.log(`🌍 Environment: ${process.env.NODE_ENV || 'development'}`);
 });
+
 
 
 
