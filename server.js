@@ -1,60 +1,87 @@
-require('dotenv').config();
-
-const express = require('express');
-const cors = require('cors');
-const midtransClient = require('midtrans-client');
-const path = require('path'); // Tambahkan ini
-
-const app = express();
-const port = process.env.PORT || 3000;
-
-// ✅ Middleware CORS dan JSON HARUS DI PALING ATAS
-const corsOptions = {
-  origin: [
-    'https://oleh2in-pos-v2.web.app',
-    'http://localhost:5000',
-    'http://localhost:3000',
-    'http://127.0.0.1:5500',
-    'http://localhost:5173',
-    'http://localhost:8080',
-    null
-  ],
-  methods: ['GET', 'POST', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization'],
-  credentials: true,
-  optionsSuccessStatus: 200
-};
-
-app.use(cors(corsOptions));
-app.options('*', cors(corsOptions)); // Handle preflight
-app.use(express.json());
-
-// Debug middleware
-app.use((req, res, next) => {
-  console.log(`🔍 ${req.method} ${req.url} from ${req.get('Origin') || 'Unknown'}`);
-  next();
-});
-
-// ✅ CEK ENVIRONMENT VARIABLES
-if (!process.env.MIDTRANS_SERVER_KEY || !process.env.MIDTRANS_CLIENT_KEY) {
-  console.error('❌ ERROR: Midtrans environment variables not set!');
-}
-
-// Midtrans config
-const snap = new midtransClient.Snap({
-  isProduction: process.env.NODE_ENV === 'production',
-  serverKey: process.env.MIDTRANS_SERVER_KEY,
-  clientKey: process.env.MIDTRANS_CLIENT_KEY
-});
-
 // ✅ SEMUA ROUTE API DIDEFINISIKAN DI SINI
-app.get('/check-env', (req, res) => { /* ... kode Anda ... */ });
-app.get('/test-midtrans', (req, res) => { /* ... kode Anda ... */ });
-app.post('/get-snap-token', async (req, res) => { /* ... kode Anda yang sudah diperbaiki ... */ });
-app.get('/', (req, res) => { /* ... kode Anda ... */ });
+app.get('/check-env', (req, res) => {
+  res.json({
+    message: "Checking environment variables on server",
+    node_env: process.env.NODE_ENV,
+    server_key_exists: !!process.env.MIDTRANS_SERVER_KEY,
+    server_key_length: process.env.MIDTRANS_SERVER_KEY ? process.env.MIDTRANS_SERVER_KEY.length : 0,
+    server_key_preview: process.env.MIDTRANS_SERVER_KEY ? process.env.MIDTRANS_SERVER_KEY.substring(0, 20) + '...' : 'NOT_SET',
+    client_key_exists: !!process.env.MIDTRANS_CLIENT_KEY,
+    client_key_length: process.env.MIDTRANS_CLIENT_KEY ? process.env.MIDTRANS_CLIENT_KEY.length : 0,
+    client_key_preview: process.env.MIDTRANS_CLIENT_KEY ? process.env.MIDTRANS_CLIENT_KEY.substring(0, 20) + '...' : 'NOT_SET',
+  });
+});
+
+app.get('/test-midtrans', (req, res) => {
+  console.log('🧪 Testing Midtrans connection...');
+  
+  if (!process.env.MIDTRANS_SERVER_KEY) {
+    return res.status(500).json({
+      success: false,
+      error: 'MIDTRANS_SERVER_KEY environment variable not set'
+    });
+  }
+  
+  const testData = {
+    transaction_details: {
+      order_id: 'TEST-' + Date.now(),
+      gross_amount: 1000
+    },
+    customer_details: {
+      first_name: "Test",
+      email: "test@example.com",
+      phone: "08123456789"
+    },
+    item_details: [{
+      id: 'TEST-ITEM',
+      price: 1000,
+      quantity: 1,
+      name: 'Test Product'
+    }]
+  };
+
+  snap.createTransaction(testData)
+    .then((transaction) => {
+      console.log('✅ Test successful!');
+      res.json({
+        success: true,
+        message: 'Midtrans connection successful',
+        token: transaction.token,
+        environment: process.env.NODE_ENV || 'development'
+      });
+    })
+    .catch((error) => {
+      console.error('❌ Test failed:', error.message);
+      res.status(500).json({
+        success: false,
+        error: error.message,
+        environment: process.env.NODE_ENV || 'development'
+      });
+    });
+});
+
+app.post('/get-snap-token', async (req, res) => {
+  // ... (kode endpoint Anda yang sudah lengkap)
+});
+
+app.get('/', (req, res) => {
+  res.json({
+    status: 'active',
+    message: '🚀 INDOCART Backend Server is running!',
+    timestamp: new Date().toISOString(),
+    origin: req.get('Origin'),
+    environment: process.env.NODE_ENV || 'development',
+    midtrans_configured: !!process.env.MIDTRANS_SERVER_KEY
+  });
+});
+
+// ✅ TAMBAHKAN ENDPOINT TES INI SEBELUM CATCH-ALL
+app.get('/am-i-updated', (req, res) => {
+  res.send('YES, THE SERVER IS UPDATED WITH THE LATEST CODE!');
+});
+
 
 // ✅ SERVE FILE STATIK PALING AKHIR
-// Ini akan melayani file dari folder 'public' DAN berfungsi sebagai fallback untuk SPA
 app.use(express.static(path.join(__dirname, 'public')));
 
 // Catch-all handler: kirim index.html untuk rute lain yang tidak dikenal (untuk SPA)
@@ -71,12 +98,6 @@ app.use((err, req, res, next) => {
   });
 });
 
-// ✅ TAMBAHKAN ENDPOINT TES INI
-app.get('/am-i-updated', (req, res) => {
-  res.send('YES, THE SERVER IS UPDATED WITH THE LATEST CODE!');
-});
-
 app.listen(port, () => {
   console.log(`🚀 Server running at http://localhost:${port}`);
 });
-
