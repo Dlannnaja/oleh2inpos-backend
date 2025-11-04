@@ -85,34 +85,37 @@ app.get('/test-midtrans', async (req, res) => {
 // ✅ MAIN SNAP TOKEN ENDPOINT
 app.post('/get-snap-token', async (req, res) => {
   try {
+    console.log("📥 BODY DITERIMA:", req.body);
+
     const { order_id, gross_amount, customer_details, item_details } = req.body;
 
     if (!order_id || !gross_amount) {
       return res.status(400).json({
         success: false,
-        error: 'Missing required fields: order_id or gross_amount',
+        error: "order_id dan gross_amount wajib dikirim!"
       });
     }
 
-    const parameter = {
+    const transaction = await snap.createTransaction({
       transaction_details: { order_id, gross_amount },
       customer_details: customer_details || {},
-      item_details: item_details || [],
-    };
+      item_details: item_details || []
+    });
 
-    const transaction = await snap.createTransaction(parameter);
     res.json({
       success: true,
-      token: transaction.token,
+      token: transaction.token
     });
+
   } catch (error) {
-    console.error('❌ Error generating Snap token:', error);
-    res.status(500).json({
+    console.log("❌ MIDTRANS ERROR:", error.message);
+    res.status(400).json({
       success: false,
-      error: error.message,
+      error: error.message
     });
   }
 });
+
 
 // ✅ ROOT ENDPOINT
 app.get('/', (req, res) => {
@@ -144,3 +147,4 @@ app.listen(port, () => {
   console.log(`🚀 Server running on port ${port}`);
   console.log(`🌍 Environment: ${process.env.NODE_ENV || 'development'}`);
 });
+
