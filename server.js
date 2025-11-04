@@ -71,6 +71,12 @@ app.use((err, req, res, next) => {
   });
 });
 
+// ✅ TAMBAHKAN ENDPOINT TES INI
+app.get('/am-i-updated', (req, res) => {
+  res.send('YES, THE SERVER IS UPDATED WITH THE LATEST CODE!');
+});
+
 app.listen(port, () => {
   console.log(`🚀 Server running at http://localhost:${port}`);
 });
+
