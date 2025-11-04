@@ -112,6 +112,16 @@ app.get('/test-midtrans', (req, res) => {
     });
 });
 
+// ✅ TAMBAHKAN ENDPOINT TES INI
+app.post('/test-post', (req, res) => {
+  console.log('✅ POST /test-post berhasil diterima!');
+  console.log('Body:', req.body);
+  res.json({
+    message: 'POST request berhasil!',
+    bodyReceived: req.body
+  });
+});
+
 // ✅ API endpoint untuk mendapatkan Snap Token
 app.post('/get-snap-token', async (req, res) => {
   console.log('🎯 POST /get-snap-token RECEIVED!');
@@ -191,3 +201,4 @@ app.listen(port, () => {
   console.log(`🚀 Server running at http://localhost:${port}`);
   console.log(`📱 Environment: ${process.env.NODE_ENV || 'development'}`);
 });
+
