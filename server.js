@@ -5,7 +5,7 @@ const midtransClient = require('midtrans-client');
 const path = require('path');
 
 const app = express(); // ✅ HARUS ADA DI ATAS
-const port = process.env.PORT || 3000;
+const port = process.env.PORT || 4000;
 
 // ✅ CORS
 const corsOptions = {
@@ -124,4 +124,5 @@ app.use((err, req, res, next) => {
 app.listen(port, () => {
   console.log(`🚀 Server running on port ${port}`);
 });
+
 
