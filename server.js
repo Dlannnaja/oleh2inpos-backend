@@ -27,10 +27,13 @@ if (!process.env.MIDTRANS_SERVER_KEY || !process.env.MIDTRANS_CLIENT_KEY) {
 }
 
 const snap = new midtransClient.Snap({
-  isProduction: process.env.NODE_ENV === 'production',
+  isProduction: false, // ✅ PASTI SANDBOX
   serverKey: process.env.MIDTRANS_SERVER_KEY,
-  clientKey: process.env.MIDTRANS_CLIENT_KEY,
+  clientKey: process.env.MIDTRANS_CLIENT_KEY
 });
+
+console.log("🌐 MIDTRANS MODE:", snap.apiConfig.isProduction ? "PRODUCTION" : "SANDBOX");
+console.log("🔑 SERVER KEY:", process.env.MIDTRANS_SERVER_KEY.substring(0, 10) + "...");
 
 // ✅ CHECK ENV ENDPOINT
 app.get('/check-env', (req, res) => {
@@ -148,5 +151,6 @@ app.listen(port, () => {
   console.log(`🚀 Server running on port ${port}`);
   console.log(`🌍 Environment: ${process.env.NODE_ENV || 'development'}`);
 });
+
 
 
