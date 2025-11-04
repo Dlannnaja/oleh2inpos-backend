@@ -6,28 +6,34 @@ const midtransClient = require('midtrans-client');
 const app = express();
 const port = process.env.PORT || 3000;
 
-// ✅ Middleware CORS yang spesifik
+// ✅ Middleware CORS yang lebih spesifik
 const corsOptions = {
   origin: [
-    'https://oleh2in-pos-v2.web.app',
+    'https://oleh2in-pos-v2.web.app',   // Domain hosting Anda
     'http://localhost:5000',
     'http://localhost:3000',
-    'http://127.0.0.1:5500'
+    'http://127.0.0.1:5500',
+    'http://localhost:5173',  // Tambahkan port yang Anda gunakan
+    'http://localhost:8080',  // Port lain yang mungkin digunakan
+    null  // Untuk mendukung request dari file://
   ],
   methods: ['GET', 'POST', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization'],
-  credentials: true
+  credentials: true,
+  optionsSuccessStatus: 200 // Beberapa browser legacy membutuhkan ini
 };
 
-// ✅ Manual handle preflight (OPTIONS) untuk semua route
+// Terapkan CORS sebelum middleware lainnya
+app.use(cors(corsOptions));
+
+// Handle preflight requests
 app.options('*', cors(corsOptions));
 
-app.use(cors(corsOptions));
 app.use(express.json());
 
 // Debug middleware
 app.use((req, res, next) => {
-  console.log(`🔍 ${req.method} ${req.url} from ${req.get('Origin')}`);
+  console.log(`🔍 ${req.method} ${req.url} from ${req.get('Origin') || 'Unknown'}`);
   next();
 });
 
@@ -36,17 +42,17 @@ if (!process.env.MIDTRANS_SERVER_KEY || !process.env.MIDTRANS_CLIENT_KEY) {
   console.error('❌ ERROR: Midtrans environment variables not set!');
 }
 
-// Midtrans config YANG SUDAH DIPERBAIKI
+// Midtrans config
 const snap = new midtransClient.Snap({
   isProduction: process.env.NODE_ENV === 'production',
   serverKey: process.env.MIDTRANS_SERVER_KEY,
   clientKey: process.env.MIDTRANS_CLIENT_KEY
 });
 
-// ✅ CHECK ENV ENDPOINT (PALING ATAS)
+// ✅ CHECK ENV ENDPOINT
 app.get('/check-env', (req, res) => {
   res.json({
-    message: "Checking environment variables on Render server",
+    message: "Checking environment variables on server",
     node_env: process.env.NODE_ENV,
     server_key_exists: !!process.env.MIDTRANS_SERVER_KEY,
     server_key_length: process.env.MIDTRANS_SERVER_KEY ? process.env.MIDTRANS_SERVER_KEY.length : 0,
@@ -106,7 +112,7 @@ app.get('/test-midtrans', (req, res) => {
     });
 });
 
-// ✅ API endpoint untuk mendapatkan Snap Token (versi stabil)
+// ✅ API endpoint untuk mendapatkan Snap Token
 app.post('/get-snap-token', async (req, res) => {
   console.log('🎯 POST /get-snap-token RECEIVED!');
 
@@ -169,7 +175,7 @@ app.get('/', (req, res) => {
   });
 });
 
-// Static files PALING AKHIR
+// Static files
 app.use(express.static('public'));
 
 // Error handler
@@ -185,6 +191,3 @@ app.listen(port, () => {
   console.log(`🚀 Server running at http://localhost:${port}`);
   console.log(`📱 Environment: ${process.env.NODE_ENV || 'development'}`);
 });
-
-
-
