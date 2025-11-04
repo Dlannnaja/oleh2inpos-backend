@@ -1,4 +1,34 @@
-// ✅ SEMUA ROUTE API DIDEFINISIKAN DI SINI
+require('dotenv').config();
+const express = require('express');
+const cors = require('cors');
+const midtransClient = require('midtrans-client');
+const path = require('path');
+
+const app = express(); // ✅ HARUS ADA DI ATAS
+const port = process.env.PORT || 3000;
+
+// ✅ CORS
+const corsOptions = {
+  origin: [
+    'https://oleh2in-pos-v2.web.app',
+    'http://localhost:4200',
+    'http://localhost:3000',
+    'http://localhost:5173'
+  ],
+  methods: ['GET', 'POST'],
+  allowedHeaders: ['Content-Type', 'Authorization'],
+};
+app.use(cors(corsOptions));
+app.use(express.json());
+
+// ✅ KONFIGURASI MIDTRANS
+const snap = new midtransClient.Snap({
+  isProduction: process.env.NODE_ENV === 'production',
+  serverKey: process.env.MIDTRANS_SERVER_KEY,
+  clientKey: process.env.MIDTRANS_CLIENT_KEY
+});
+
+// ✅ CEK ENV
 app.get('/check-env', (req, res) => {
   res.json({
     message: "Checking environment variables on server",
@@ -12,92 +42,93 @@ app.get('/check-env', (req, res) => {
   });
 });
 
+// ✅ TEST MIDTRANS
 app.get('/test-midtrans', (req, res) => {
-  console.log('🧪 Testing Midtrans connection...');
-  
   if (!process.env.MIDTRANS_SERVER_KEY) {
     return res.status(500).json({
       success: false,
       error: 'MIDTRANS_SERVER_KEY environment variable not set'
     });
   }
-  
+
   const testData = {
     transaction_details: {
       order_id: 'TEST-' + Date.now(),
       gross_amount: 1000
-    },
-    customer_details: {
-      first_name: "Test",
-      email: "test@example.com",
-      phone: "08123456789"
-    },
-    item_details: [{
-      id: 'TEST-ITEM',
-      price: 1000,
-      quantity: 1,
-      name: 'Test Product'
-    }]
+    }
   };
 
   snap.createTransaction(testData)
     .then((transaction) => {
-      console.log('✅ Test successful!');
       res.json({
         success: true,
-        message: 'Midtrans connection successful',
-        token: transaction.token,
-        environment: process.env.NODE_ENV || 'development'
+        message: 'Midtrans connection OK',
+        token: transaction.token
       });
     })
     .catch((error) => {
-      console.error('❌ Test failed:', error.message);
       res.status(500).json({
         success: false,
-        error: error.message,
-        environment: process.env.NODE_ENV || 'development'
+        error: error.message
       });
     });
 });
 
+// ✅ ENDPOINT SNAP TOKEN ASLI
 app.post('/get-snap-token', async (req, res) => {
-  // ... (kode endpoint Anda yang sudah lengkap)
+  try {
+    const { order_id, gross_amount, customer_details, item_details } = req.body;
+
+    const transaction = await snap.createTransaction({
+      transaction_details: { order_id, gross_amount },
+      customer_details,
+      item_details
+    });
+
+    res.json({
+      success: true,
+      token: transaction.token
+    });
+
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      error: error.message
+    });
+  }
 });
 
+// ✅ ROOT
 app.get('/', (req, res) => {
   res.json({
     status: 'active',
     message: '🚀 INDOCART Backend Server is running!',
     timestamp: new Date().toISOString(),
-    origin: req.get('Origin'),
     environment: process.env.NODE_ENV || 'development',
     midtrans_configured: !!process.env.MIDTRANS_SERVER_KEY
   });
 });
 
-// ✅ TAMBAHKAN ENDPOINT TES INI SEBELUM CATCH-ALL
+// ✅ CEK UPDATE
 app.get('/am-i-updated', (req, res) => {
   res.send('YES, THE SERVER IS UPDATED WITH THE LATEST CODE!');
 });
 
-
-// ✅ SERVE FILE STATIK PALING AKHIR
+// ✅ STATIC PUBLIC FOLDER
 app.use(express.static(path.join(__dirname, 'public')));
 
-// Catch-all handler: kirim index.html untuk rute lain yang tidak dikenal (untuk SPA)
+// ✅ SPA CATCH-ALL
 app.get('*', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
 
-// Error handler PALING AKHIR
+// ✅ ERROR HANDLER
 app.use((err, req, res, next) => {
   console.error('❌ SERVER ERROR:', err.message);
-  res.status(500).json({ 
-    success: false,
-    error: 'Internal server error'
-  });
+  res.status(500).json({ success: false, error: 'Internal server error' });
 });
 
+// ✅ START SERVER
 app.listen(port, () => {
-  console.log(`🚀 Server running at http://localhost:${port}`);
+  console.log(`🚀 Server running on port ${port}`);
 });
