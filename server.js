@@ -114,14 +114,6 @@ app.get('/am-i-updated', (req, res) => {
   res.send('YES, THE SERVER IS UPDATED WITH THE LATEST CODE!');
 });
 
-// ✅ STATIC PUBLIC FOLDER
-app.use(express.static(path.join(__dirname, 'public')));
-
-// ✅ SPA CATCH-ALL
-app.get('*', (req, res) => {
-  res.sendFile(path.join(__dirname, 'public', 'index.html'));
-});
-
 // ✅ ERROR HANDLER
 app.use((err, req, res, next) => {
   console.error('❌ SERVER ERROR:', err.message);
@@ -132,3 +124,4 @@ app.use((err, req, res, next) => {
 app.listen(port, () => {
   console.log(`🚀 Server running on port ${port}`);
 });
+
