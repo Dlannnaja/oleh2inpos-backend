@@ -151,6 +151,21 @@ app.get('/am-i-updated', (req, res) => {
   res.send('✅ YES, THE SERVER IS UPDATED WITH THE LATEST CODE!');
 });
 
+// Tambahkan endpoint debug ini
+app.get('/debug-key', (req, res) => {
+  const serverKey = process.env.MIDTRANS_SERVER_KEY;
+  const nodeEnv = process.env.NODE_ENV;
+
+  res.json({
+    node_env: nodeEnv,
+    server_key_exists: !!serverKey,
+    server_key_length: serverKey ? serverKey.length : 0,
+    // Hanya tampilkan 20 karakter pertama untuk keamanan
+    server_key_preview: serverKey ? serverKey.substring(0, 20) + '...' : 'NOT_SET',
+    message: "Cocokkan 20 karakter pertama ini dengan Server Key di Dashboard Midtrans Anda."
+  });
+});
+
 // ✅ GLOBAL ERROR HANDLER
 app.use((err, req, res, next) => {
   console.error('❌ SERVER ERROR:', err);
@@ -165,6 +180,7 @@ app.listen(port, () => {
   console.log(`🚀 Server running on port ${port}`);
   console.log(`🌍 Environment: ${process.env.NODE_ENV || 'development'}`);
 });
+
 
 
 
