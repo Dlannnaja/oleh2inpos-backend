@@ -158,40 +158,6 @@ app.post('/get-snap-token', async (req, res) => {
   }
 });
 
-function testMidtransConnection() {
-  console.log('🔍 Testing Midtrans connection...');
-  
-  // Test backend connection
-  fetch('https://oleh2inpos-backend.onrender.com/test')
-    .then(res => res.json())
-    .then(data => {
-      console.log('✅ Backend connection OK:', data);
-    })
-    .catch(error => {
-      console.error('❌ Backend connection failed:', error);
-    });
-}
-
-// Test Midtrans API
-function testMidtransAPI() {
-  fetch('https://oleh2inpos-backend.onrender.com/test-midtrans')
-    .then(res => res.json())
-    .then(data => {
-      console.log('✅ Midtrans API OK:', data);
-    })
-    .catch(error => {
-      console.error('❌ Midtrans API failed:', error);
-    });
-}
-
-// Panggil fungsi test saat halaman dimuat
-document.addEventListener('DOMContentLoaded', function() {
-  setTimeout(() => {
-    testMidtransConnection();
-    testMidtransAPI();
-  }, 2000);
-});
-
 // ✅ ROOT ENDPOINT
 app.get('/', (req, res) => {
   res.json({
@@ -237,3 +203,4 @@ app.listen(port, () => {
   console.log(`🚀 Server running on port ${port}`);
   console.log(`🌍 Environment: ${process.env.NODE_ENV || 'development'}`);
 });
+
