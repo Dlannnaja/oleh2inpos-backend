@@ -42,7 +42,7 @@ try {
   console.error("❌ Failed to initialize Midtrans:", error.message);
 }
 
-// ✅ SAFE HEALTH CHECK
+// ✅ HEALTH CHECK
 app.get('/health', (req, res) => {
   res.json({
     status: 'healthy',
@@ -57,7 +57,7 @@ app.get('/health', (req, res) => {
   });
 });
 
-// ✅ SAFE TEST ENDPOINT
+// ✅ TEST ENDPOINT
 app.get('/test', (req, res) => {
   res.json({
     success: true,
@@ -69,7 +69,7 @@ app.get('/test', (req, res) => {
   });
 });
 
-// ✅ SAFE CHECK ENV
+// ✅ CHECK ENV
 app.get('/check-env', (req, res) => {
   res.json({
     message: 'Checking environment variables on server',
@@ -89,7 +89,7 @@ app.get('/check-env', (req, res) => {
   });
 });
 
-// ✅ SAFE TEST MIDTRANS
+// ✅ TEST MIDTRANS
 app.get("/test-midtrans", async (req, res) => {
   try {
     if (!snap) {
@@ -140,7 +140,7 @@ app.get("/test-midtrans", async (req, res) => {
   }
 });
 
-// ✅ SAFE MAIN SNAP TOKEN ENDPOINT
+// ✅ MAIN SNAP TOKEN ENDPOINT
 app.post('/get-snap-token', async (req, res) => {
   try {
     if (!snap) {
@@ -203,24 +203,6 @@ app.get('/', (req, res) => {
   });
 });
 
-// ✅ DEBUG ENDPOINT
-app.get('/debug', (req, res) => {
-  res.json({
-    timestamp: new Date().toISOString(),
-    uptime: process.uptime(),
-    memory: process.memoryUsage(),
-    node_version: process.version,
-    platform: process.platform,
-    midtrans_configured: !!snap,
-    midtrans_error: midtransError,
-    env_check: {
-      MIDTRANS_SERVER_KEY: !!process.env.MIDTRANS_SERVER_KEY,
-      MIDTRANS_CLIENT_KEY: !!process.env.MIDTRANS_CLIENT_KEY,
-      NODE_ENV: process.env.NODE_ENV
-    }
-  });
-});
-
 // ✅ ERROR HANDLER
 app.use((err, req, res, next) => {
   console.error('❌ SERVER ERROR:', err);
@@ -232,27 +214,10 @@ app.use((err, req, res, next) => {
   });
 });
 
-// ✅ 404 HANDLER
-app.use((req, res) => {
-  res.status(404).json({
-    success: false,
-    error: 'Endpoint not found',
-    path: req.path,
-    method: req.method
-  });
-});
-
 // ✅ START SERVER
 app.listen(port, () => {
   console.log(`🚀 Server running on port ${port}`);
   console.log(`🌍 Environment: ${process.env.NODE_ENV || 'development'}`);
-  console.log(`🔗 Available endpoints:`);
-  console.log(`   - GET  /health`);
-  console.log(`   - GET  /test`);
-  console.log(`   - GET  /check-env`);
-  console.log(`   - GET  /debug`);
-  console.log(`   - GET  /test-midtrans`);
-  console.log(`   - POST /get-snap-token`);
   console.log(`📊 Midtrans Status: ${snap ? '✅ Configured' : '❌ Not Configured'}`);
   if (midtransError) {
     console.log(`❌ Midtrans Error: ${midtransError}`);
