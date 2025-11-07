@@ -98,27 +98,49 @@ app.get("/test-midtrans", async (req, res) => {
   }
 });
 
+// ✅ TEST ENDPOINT
+app.get('/test', (req, res) => {
+  res.json({
+    success: true,
+    message: 'Backend is working!',
+    timestamp: new Date().toISOString()
+  });
+});
 
 // ✅ MAIN SNAP TOKEN ENDPOINT
 app.post('/get-snap-token', async (req, res) => {
   try {
-    console.log("📥 BODY DITERIMA:", req.body);
+    console.log("📥 BODY DITERIMA:", JSON.stringify(req.body, null, 2));
 
-    // ✅ Perbaikan: ambil variabel dari transaction_details
+    // ✅ PERBAIKAN: Validasi input yang lebih baik
     const { transaction_details, item_details, customer_details } = req.body;
 
-    if (!transaction_details?.order_id || !transaction_details?.gross_amount) {
+    if (!transaction_details || !transaction_details.order_id || !transaction_details.gross_amount) {
+      console.log("❌ ERROR: Missing required fields");
       return res.status(400).json({
         success: false,
         error: "order_id dan gross_amount wajib dikirim!"
       });
     }
 
-    const transaction = await snap.createTransaction({
-      transaction_details,
-      item_details,
-      customer_details
-    });
+    // ✅ PERBAIKAN: Pastikan gross_amount adalah number
+    const parameter = {
+      transaction_details: {
+        order_id: transaction_details.order_id,
+        gross_amount: parseInt(transaction_details.gross_amount)
+      },
+      item_details: item_details || [],
+      customer_details: customer_details || {
+        first_name: "Customer",
+        email: "customer@example.com",
+        phone: "08123456789"
+      }
+    };
+
+    console.log("🔍 PARAMETER TO MIDTRANS:", JSON.stringify(parameter, null, 2));
+
+    const transaction = await snap.createTransaction(parameter);
+    console.log("✅ TOKEN GENERATED:", transaction.token);
 
     res.json({
       success: true,
@@ -126,14 +148,49 @@ app.post('/get-snap-token', async (req, res) => {
     });
 
   } catch (error) {
-    console.log("❌ MIDTRANS ERROR:", error.message);
-    res.status(400).json({
+    console.error("❌ MIDTRANS ERROR:", error);
+    console.error("❌ ERROR STACK:", error.stack);
+    
+    res.status(500).json({
       success: false,
-      error: error.message
+      error: error.message || "Failed to create transaction"
     });
   }
 });
 
+function testMidtransConnection() {
+  console.log('🔍 Testing Midtrans connection...');
+  
+  // Test backend connection
+  fetch('https://oleh2inpos-backend.onrender.com/test')
+    .then(res => res.json())
+    .then(data => {
+      console.log('✅ Backend connection OK:', data);
+    })
+    .catch(error => {
+      console.error('❌ Backend connection failed:', error);
+    });
+}
+
+// Test Midtrans API
+function testMidtransAPI() {
+  fetch('https://oleh2inpos-backend.onrender.com/test-midtrans')
+    .then(res => res.json())
+    .then(data => {
+      console.log('✅ Midtrans API OK:', data);
+    })
+    .catch(error => {
+      console.error('❌ Midtrans API failed:', error);
+    });
+}
+
+// Panggil fungsi test saat halaman dimuat
+document.addEventListener('DOMContentLoaded', function() {
+  setTimeout(() => {
+    testMidtransConnection();
+    testMidtransAPI();
+  }, 2000);
+});
 
 // ✅ ROOT ENDPOINT
 app.get('/', (req, res) => {
@@ -180,8 +237,3 @@ app.listen(port, () => {
   console.log(`🚀 Server running on port ${port}`);
   console.log(`🌍 Environment: ${process.env.NODE_ENV || 'development'}`);
 });
-
-
-
-
-
