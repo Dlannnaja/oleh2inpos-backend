@@ -1,8 +1,6 @@
 require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
-const midtransClient = require('midtrans-client');
-const path = require('path');
 
 const app = express();
 const port = process.env.PORT || 4000;
@@ -21,21 +19,57 @@ const corsOptions = {
 app.use(cors(corsOptions));
 app.use(express.json());
 
-// ✅ MIDTRANS SNAP CONFIG
-if (!process.env.MIDTRANS_SERVER_KEY || !process.env.MIDTRANS_CLIENT_KEY) {
-  console.warn('⚠️ MIDTRANS KEYS are missing. Please set .env properly.');
+// ✅ MIDTRANS CONFIG dengan safe loading
+let snap = null;
+let midtransError = null;
+
+try {
+  const midtransClient = require('midtrans-client');
+  
+  if (process.env.MIDTRANS_SERVER_KEY && process.env.MIDTRANS_CLIENT_KEY) {
+    snap = new midtransClient.Snap({
+      isProduction: false,
+      serverKey: process.env.MIDTRANS_SERVER_KEY,
+      clientKey: process.env.MIDTRANS_CLIENT_KEY
+    });
+    console.log("✅ Midtrans Snap initialized successfully");
+  } else {
+    midtransError = "Environment variables not set";
+    console.warn("⚠️ Midtrans environment variables missing");
+  }
+} catch (error) {
+  midtransError = error.message;
+  console.error("❌ Failed to initialize Midtrans:", error.message);
 }
 
-const snap = new midtransClient.Snap({
-  isProduction: false, // ✅ PASTI SANDBOX
-  serverKey: process.env.MIDTRANS_SERVER_KEY,
-  clientKey: process.env.MIDTRANS_CLIENT_KEY
+// ✅ SAFE HEALTH CHECK
+app.get('/health', (req, res) => {
+  res.json({
+    status: 'healthy',
+    timestamp: new Date().toISOString(),
+    midtrans_configured: !!snap,
+    midtrans_error: midtransError,
+    env_vars: {
+      MIDTRANS_SERVER_KEY: !!process.env.MIDTRANS_SERVER_KEY,
+      MIDTRANS_CLIENT_KEY: !!process.env.MIDTRANS_CLIENT_KEY,
+      NODE_ENV: process.env.NODE_ENV
+    }
+  });
 });
 
-console.log("🌐 MIDTRANS MODE:", snap.apiConfig.isProduction ? "PRODUCTION" : "SANDBOX");
-console.log("🔑 SERVER KEY:", process.env.MIDTRANS_SERVER_KEY.substring(0, 10) + "...");
+// ✅ SAFE TEST ENDPOINT
+app.get('/test', (req, res) => {
+  res.json({
+    success: true,
+    message: 'Backend is working!',
+    timestamp: new Date().toISOString(),
+    uptime: process.uptime(),
+    midtrans_status: snap ? 'configured' : 'not configured',
+    midtrans_error: midtransError
+  });
+});
 
-// ✅ CHECK ENV ENDPOINT
+// ✅ SAFE CHECK ENV
 app.get('/check-env', (req, res) => {
   res.json({
     message: 'Checking environment variables on server',
@@ -50,13 +84,21 @@ app.get('/check-env', (req, res) => {
     client_key_preview: process.env.MIDTRANS_CLIENT_KEY
       ? process.env.MIDTRANS_CLIENT_KEY.substring(0, 20) + '...'
       : 'NOT_SET',
+    snap_initialized: !!snap,
+    midtrans_error: midtransError
   });
 });
 
-// ✅ TEST MIDTRANS CONNECTION
+// ✅ SAFE TEST MIDTRANS
 app.get("/test-midtrans", async (req, res) => {
   try {
-    console.log("⚡ Testing Midtrans Snap API");
+    if (!snap) {
+      return res.status(500).json({
+        success: false,
+        message: "Midtrans not configured",
+        error: midtransError || "Unknown error"
+      });
+    }
 
     const parameter = {
       transaction_details: {
@@ -79,51 +121,45 @@ app.get("/test-midtrans", async (req, res) => {
     };
 
     const transaction = await snap.createTransaction(parameter);
-    console.log("✅ Token:", transaction.token);
 
     return res.json({
       success: true,
       message: "Midtrans test successful",
-      token: transaction.token
+      token: transaction.token,
+      redirect_url: transaction.redirect_url
     });
 
   } catch (error) {
-    console.error("❌ ERROR TEST MIDTRANS:", error);
-
+    console.error("❌ MIDTRANS ERROR:", error);
     return res.status(500).json({
       success: false,
       message: "Failed to test Midtrans",
-      error: error.message
+      error: error.message,
+      error_type: error.name
     });
   }
 });
 
-// ✅ TEST ENDPOINT
-app.get('/test', (req, res) => {
-  res.json({
-    success: true,
-    message: 'Backend is working!',
-    timestamp: new Date().toISOString()
-  });
-});
-
-// ✅ MAIN SNAP TOKEN ENDPOINT
+// ✅ SAFE MAIN SNAP TOKEN ENDPOINT
 app.post('/get-snap-token', async (req, res) => {
   try {
-    console.log("📥 BODY DITERIMA:", JSON.stringify(req.body, null, 2));
+    if (!snap) {
+      return res.status(500).json({
+        success: false,
+        error: "Midtrans not configured. Please check server configuration.",
+        details: midtransError
+      });
+    }
 
-    // ✅ PERBAIKAN: Validasi input yang lebih baik
     const { transaction_details, item_details, customer_details } = req.body;
 
     if (!transaction_details || !transaction_details.order_id || !transaction_details.gross_amount) {
-      console.log("❌ ERROR: Missing required fields");
       return res.status(400).json({
         success: false,
         error: "order_id dan gross_amount wajib dikirim!"
       });
     }
 
-    // ✅ PERBAIKAN: Pastikan gross_amount adalah number
     const parameter = {
       transaction_details: {
         order_id: transaction_details.order_id,
@@ -137,23 +173,20 @@ app.post('/get-snap-token', async (req, res) => {
       }
     };
 
-    console.log("🔍 PARAMETER TO MIDTRANS:", JSON.stringify(parameter, null, 2));
-
     const transaction = await snap.createTransaction(parameter);
-    console.log("✅ TOKEN GENERATED:", transaction.token);
 
     res.json({
       success: true,
-      token: transaction.token
+      token: transaction.token,
+      redirect_url: transaction.redirect_url
     });
 
   } catch (error) {
     console.error("❌ MIDTRANS ERROR:", error);
-    console.error("❌ ERROR STACK:", error.stack);
-    
     res.status(500).json({
       success: false,
-      error: error.message || "Failed to create transaction"
+      error: error.message || "Failed to create transaction",
+      error_type: error.name
     });
   }
 });
@@ -165,36 +198,47 @@ app.get('/', (req, res) => {
     message: '🚀 INDOCART Backend Server is running!',
     timestamp: new Date().toISOString(),
     environment: process.env.NODE_ENV || 'development',
-    midtrans_configured: !!process.env.MIDTRANS_SERVER_KEY,
+    midtrans_configured: !!snap,
+    midtrans_error: midtransError
   });
 });
 
-// ✅ SIMPLE DEPLOY CHECK
-app.get('/am-i-updated', (req, res) => {
-  res.send('✅ YES, THE SERVER IS UPDATED WITH THE LATEST CODE!');
-});
-
-// Tambahkan endpoint debug ini
-app.get('/debug-key', (req, res) => {
-  const serverKey = process.env.MIDTRANS_SERVER_KEY;
-  const nodeEnv = process.env.NODE_ENV;
-
+// ✅ DEBUG ENDPOINT
+app.get('/debug', (req, res) => {
   res.json({
-    node_env: nodeEnv,
-    server_key_exists: !!serverKey,
-    server_key_length: serverKey ? serverKey.length : 0,
-    // Hanya tampilkan 20 karakter pertama untuk keamanan
-    server_key_preview: serverKey ? serverKey.substring(0, 20) + '...' : 'NOT_SET',
-    message: "Cocokkan 20 karakter pertama ini dengan Server Key di Dashboard Midtrans Anda."
+    timestamp: new Date().toISOString(),
+    uptime: process.uptime(),
+    memory: process.memoryUsage(),
+    node_version: process.version,
+    platform: process.platform,
+    midtrans_configured: !!snap,
+    midtrans_error: midtransError,
+    env_check: {
+      MIDTRANS_SERVER_KEY: !!process.env.MIDTRANS_SERVER_KEY,
+      MIDTRANS_CLIENT_KEY: !!process.env.MIDTRANS_CLIENT_KEY,
+      NODE_ENV: process.env.NODE_ENV
+    }
   });
 });
 
-// ✅ GLOBAL ERROR HANDLER
+// ✅ ERROR HANDLER
 app.use((err, req, res, next) => {
   console.error('❌ SERVER ERROR:', err);
   res.status(500).json({
     success: false,
     error: 'Internal Server Error',
+    details: err.message,
+    timestamp: new Date().toISOString()
+  });
+});
+
+// ✅ 404 HANDLER
+app.use((req, res) => {
+  res.status(404).json({
+    success: false,
+    error: 'Endpoint not found',
+    path: req.path,
+    method: req.method
   });
 });
 
@@ -202,5 +246,15 @@ app.use((err, req, res, next) => {
 app.listen(port, () => {
   console.log(`🚀 Server running on port ${port}`);
   console.log(`🌍 Environment: ${process.env.NODE_ENV || 'development'}`);
+  console.log(`🔗 Available endpoints:`);
+  console.log(`   - GET  /health`);
+  console.log(`   - GET  /test`);
+  console.log(`   - GET  /check-env`);
+  console.log(`   - GET  /debug`);
+  console.log(`   - GET  /test-midtrans`);
+  console.log(`   - POST /get-snap-token`);
+  console.log(`📊 Midtrans Status: ${snap ? '✅ Configured' : '❌ Not Configured'}`);
+  if (midtransError) {
+    console.log(`❌ Midtrans Error: ${midtransError}`);
+  }
 });
-
