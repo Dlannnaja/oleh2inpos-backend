@@ -143,7 +143,15 @@ app.get("/test-midtrans", async (req, res) => {
 // ✅ MAIN SNAP TOKEN ENDPOINT
 app.post('/get-snap-token', async (req, res) => {
   try {
-    const { transaction_details, item_details, customer_details, discount_total } = req.body;
+    if (!snap) {
+      return res.status(500).json({
+        success: false,
+        error: "Midtrans not configured. Please check server configuration.",
+        details: midtransError
+      });
+    }
+
+    const { transaction_details, item_details, customer_details } = req.body;
 
     if (!transaction_details || !transaction_details.order_id || !transaction_details.gross_amount) {
       return res.status(400).json({
@@ -152,39 +160,18 @@ app.post('/get-snap-token', async (req, res) => {
       });
     }
 
-    // ✅ Copy item_details
-    let items = Array.isArray(item_details) ? [...item_details] : [];
-
-    // ✅ Tambahkan item diskon negatif agar sum item match gross_amount
-    if (discount_total && Number(discount_total) > 0) {
-      items.push({
-        id: "DISKON",
-        name: "Diskon",
-        price: -Math.abs(discount_total),
-        quantity: 1
-      });
-    }
-
-    // ✅ Tambahkan logging biar yakin backend menerima diskon
-    console.log("==== FINAL MIDTRANS PAYLOAD ====");
-    console.log("ITEMS:", items);
-    console.log("GROSS:", transaction_details.gross_amount);
-    console.log("DISKON:", discount_total);
-
     const parameter = {
       transaction_details: {
         order_id: transaction_details.order_id,
         gross_amount: parseInt(transaction_details.gross_amount)
       },
-      item_details: items,
+      item_details: item_details || [],
       customer_details: customer_details || {
         first_name: "Customer",
         email: "customer@example.com",
         phone: "08123456789"
       }
     };
-
-    console.log("🚀 KIRIM KE MIDTRANS:", parameter);
 
     const transaction = await snap.createTransaction(parameter);
 
@@ -198,13 +185,11 @@ app.post('/get-snap-token', async (req, res) => {
     console.error("❌ MIDTRANS ERROR:", error);
     res.status(500).json({
       success: false,
-      error: error.message,
+      error: error.message || "Failed to create transaction",
       error_type: error.name
     });
   }
 });
-
-
 
 // ✅ ROOT ENDPOINT
 app.get('/', (req, res) => {
@@ -238,8 +223,3 @@ app.listen(port, () => {
     console.log(`❌ Midtrans Error: ${midtransError}`);
   }
 });
-
-
-
-
-
