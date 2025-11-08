@@ -145,8 +145,17 @@ app.post('/get-snap-token', async (req, res) => {
   try {
     const { transaction_details, item_details, customer_details, discount_total } = req.body;
 
-    let items = item_details || [];
+    if (!transaction_details || !transaction_details.order_id || !transaction_details.gross_amount) {
+      return res.status(400).json({
+        success: false,
+        error: "order_id dan gross_amount wajib dikirim!"
+      });
+    }
 
+    // ✅ duplikasi item_details
+    let items = Array.isArray(item_details) ? [...item_details] : [];
+
+    // ✅ tambahkan item diskon negatif
     if (discount_total && discount_total > 0) {
       items.push({
         id: "DISKON",
@@ -155,6 +164,10 @@ app.post('/get-snap-token', async (req, res) => {
         quantity: 1
       });
     }
+
+    console.log("✅ FINAL ITEM DETAILS:", items);
+    console.log("✅ GROSS AMOUNT:", transaction_details.gross_amount);
+    console.log("✅ DISKON:", discount_total);
 
     const parameter = {
       transaction_details: {
@@ -168,6 +181,8 @@ app.post('/get-snap-token', async (req, res) => {
         phone: "08123456789"
       }
     };
+
+    console.log("🚀 KIRIM KE MIDTRANS:", parameter);
 
     const transaction = await snap.createTransaction(parameter);
     res.json({
@@ -219,6 +234,7 @@ app.listen(port, () => {
     console.log(`❌ Midtrans Error: ${midtransError}`);
   }
 });
+
 
 
 
