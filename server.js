@@ -143,15 +143,7 @@ app.get("/test-midtrans", async (req, res) => {
 // ✅ MAIN SNAP TOKEN ENDPOINT
 app.post('/get-snap-token', async (req, res) => {
   try {
-    if (!snap) {
-      return res.status(500).json({
-        success: false,
-        error: "Midtrans not configured. Please check server configuration.",
-        details: midtransError
-      });
-    }
-
-    const { transaction_details, item_details, customer_details } = req.body;
+    const { transaction_details, item_details, customer_details, discount_total } = req.body;
 
     if (!transaction_details || !transaction_details.order_id || !transaction_details.gross_amount) {
       return res.status(400).json({
@@ -160,12 +152,24 @@ app.post('/get-snap-token', async (req, res) => {
       });
     }
 
+    let items = item_details || [];
+
+    // ✅ Tambahkan item diskon negatif bila ada
+    if (discount_total && discount_total > 0) {
+      items.push({
+        id: "DISKON",
+        name: "Diskon",
+        price: -Math.abs(discount_total),
+        quantity: 1
+      });
+    }
+
     const parameter = {
       transaction_details: {
         order_id: transaction_details.order_id,
         gross_amount: parseInt(transaction_details.gross_amount)
       },
-      item_details: item_details || [],
+      item_details: items,
       customer_details: customer_details || {
         first_name: "Customer",
         email: "customer@example.com",
@@ -175,21 +179,22 @@ app.post('/get-snap-token', async (req, res) => {
 
     const transaction = await snap.createTransaction(parameter);
 
-    res.json({
+    return res.json({
       success: true,
       token: transaction.token,
       redirect_url: transaction.redirect_url
     });
 
   } catch (error) {
-    console.error("❌ MIDTRANS ERROR:", error);
-    res.status(500).json({
+    console.error("❌ MIDTRANS ERROR:", error?.ApiResponse || error);
+    return res.status(500).json({
       success: false,
-      error: error.message || "Failed to create transaction",
-      error_type: error.name
+      error: error.message,
+      details: error?.ApiResponse || null
     });
   }
 });
+
 
 // ✅ ROOT ENDPOINT
 app.get('/', (req, res) => {
@@ -223,3 +228,4 @@ app.listen(port, () => {
     console.log(`❌ Midtrans Error: ${midtransError}`);
   }
 });
+
