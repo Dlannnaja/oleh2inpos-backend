@@ -152,9 +152,10 @@ app.post('/get-snap-token', async (req, res) => {
       });
     }
 
+    // ✅ Copy item_details
     let items = item_details || [];
 
-    // ✅ Tambahkan item diskon negatif bila ada
+    // ✅ Tambahkan diskon sebagai item negatif (penting!)
     if (discount_total && discount_total > 0) {
       items.push({
         id: "DISKON",
@@ -179,18 +180,18 @@ app.post('/get-snap-token', async (req, res) => {
 
     const transaction = await snap.createTransaction(parameter);
 
-    return res.json({
+    res.json({
       success: true,
       token: transaction.token,
       redirect_url: transaction.redirect_url
     });
 
   } catch (error) {
-    console.error("❌ MIDTRANS ERROR:", error?.ApiResponse || error);
-    return res.status(500).json({
+    console.error("❌ MIDTRANS ERROR:", error);
+    res.status(500).json({
       success: false,
       error: error.message,
-      details: error?.ApiResponse || null
+      error_type: error.name
     });
   }
 });
@@ -228,4 +229,5 @@ app.listen(port, () => {
     console.log(`❌ Midtrans Error: ${midtransError}`);
   }
 });
+
 
