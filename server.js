@@ -152,11 +152,11 @@ app.post('/get-snap-token', async (req, res) => {
       });
     }
 
-    // ✅ duplikasi item_details
+    // ✅ Copy item_details
     let items = Array.isArray(item_details) ? [...item_details] : [];
 
-    // ✅ tambahkan item diskon negatif
-    if (discount_total && discount_total > 0) {
+    // ✅ Tambahkan item diskon negatif agar sum item match gross_amount
+    if (discount_total && Number(discount_total) > 0) {
       items.push({
         id: "DISKON",
         name: "Diskon",
@@ -165,9 +165,11 @@ app.post('/get-snap-token', async (req, res) => {
       });
     }
 
-    console.log("✅ FINAL ITEM DETAILS:", items);
-    console.log("✅ GROSS AMOUNT:", transaction_details.gross_amount);
-    console.log("✅ DISKON:", discount_total);
+    // ✅ Tambahkan logging biar yakin backend menerima diskon
+    console.log("==== FINAL MIDTRANS PAYLOAD ====");
+    console.log("ITEMS:", items);
+    console.log("GROSS:", transaction_details.gross_amount);
+    console.log("DISKON:", discount_total);
 
     const parameter = {
       transaction_details: {
@@ -185,6 +187,7 @@ app.post('/get-snap-token', async (req, res) => {
     console.log("🚀 KIRIM KE MIDTRANS:", parameter);
 
     const transaction = await snap.createTransaction(parameter);
+
     res.json({
       success: true,
       token: transaction.token,
@@ -200,6 +203,7 @@ app.post('/get-snap-token', async (req, res) => {
     });
   }
 });
+
 
 
 // ✅ ROOT ENDPOINT
@@ -234,6 +238,7 @@ app.listen(port, () => {
     console.log(`❌ Midtrans Error: ${midtransError}`);
   }
 });
+
 
 
 
