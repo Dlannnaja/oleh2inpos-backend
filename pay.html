@@ -1,82 +1,44 @@
 <!DOCTYPE html>
-<html lang="id">
+<html>
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Pembayaran Midtrans</title>
+  <meta charset="UTF-8">
+  <title>Pembayaran</title>
 
-    <!-- SNAP JAVASCRIPT -->
-    <script 
-        src="https://app.sandbox.midtrans.com/snap/snap.js" 
-        data-client-key="Mid-client-fvOCSkh7us8t74ZF">
-    </script>
+  <script src="https://app.sandbox.midtrans.com/snap/snap.js"
+    data-client-key="Mid-client-fvOCSkh7us8t74ZF"></script>
 
-    <style>
-        body {
-            font-family: Arial, sans-serif;
-            background: #f7f7f7;
-            margin: 0;
-            padding: 0;
-            text-align: center;
-        }
-        .loader {
-            margin-top: 60px;
-            font-size: 20px;
-            color: #444;
-        }
-    </style>
 </head>
+<body style="font-family: sans-serif;">
 
-<body>
+<script>
+  const url = new URLSearchParams(window.location.search);
+  const token = url.get("token");
 
-    <div class="loader">Sedang membuka pembayaran Midtrans...</div>
+  // Jika tidak ada token → keluar
+  if (!token) {
+    document.body.innerHTML = "Token tidak valid.";
+  }
 
-    <script>
-        // Ambil token dari URL
-        const urlParams = new URLSearchParams(window.location.search);
-        const token = urlParams.get("token");
+  // Jalankan Snap
+  snap.pay(token, {
 
-        if (!token) {
-            document.body.innerHTML = "<h2>❌ Token tidak ditemukan.</h2>";
-        } else {
-            // Jalankan Snap
-            snap.pay(token, {
-                onSuccess: function(result) {
-                    console.log("SUKSES:", result);
-                },
-                onPending: function(result) {
-                    console.log("PENDING:", result);
-                },
-                onError: function(result) {
-                    console.log("ERROR:", result);
-                },
-                onClose: function() {
-                    console.log("DITUTUP USER");
-                }
-            });
-        }
-    </script>
+    onClose: function() {
 
-    <script>
-      const url = new URLSearchParams(window.location.search);
-      const token = url.get("token");
-    
-      snap.pay(token, {
-        onClose: function() {
-          // Kirim status "closed" ke server
-          fetch("https://oleh2inpos-backend.onrender.com/payment-status", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ token, status: "closed" })
-          });
-    
-          // Tutup halaman otomatis
-          window.location.href = "about:blank";
-        }
+      // Kirim status ke backend → diberi status CLOSED
+      fetch("https://oleh2inpos-backend.onrender.com/payment-status", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ token, status: "closed" })
       });
-    </script>
+
+      // Redirect halaman supaya TIDAK stuck
+      window.location.href = "about:blank";
+    }
+
+  });
+</script>
+
+<p style="text-align:center">Sedang membuka pembayaran Midtrans...</p>
 
 </body>
 </html>
-
-
