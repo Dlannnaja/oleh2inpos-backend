@@ -150,6 +150,18 @@ app.post('/payment-status', (req, res) => {
   res.json({ success: true });
 });
 
+app.post("/save-qr-transaction", (req, res) => {
+  const { order_id, token } = req.body;
+
+  if (!order_id || !token) {
+    return res.status(400).json({ error: "Missing order_id or token" });
+  }
+
+  qrTransactionMap[order_id] = token;
+  res.json({ success: true });
+});
+
+
 // =========================
 // PC POLLING PAYMENT STATUS
 // =========================
@@ -213,3 +225,4 @@ app.get('/', (req, res) => {
 app.listen(port, () => {
   console.log(`🚀 Server running on port ${port}`);
 });
+
