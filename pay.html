@@ -21,24 +21,6 @@
     document.body.innerHTML = "Token tidak valid.";
   }
 
-  // Jalankan Snap
-  snap.pay(token, {
-
-    onClose: function() {
-
-      // Kirim status ke backend → diberi status CLOSED
-      fetch("https://oleh2inpos-backend.onrender.com/payment-status", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ token, status: "closed" })
-      });
-
-      // Redirect halaman supaya TIDAK stuck
-      window.location.href = "about:blank";
-    }
-
-  });
-
   snap.pay(token, {
 
   onSuccess: function(result) {
@@ -69,5 +51,6 @@
 
 </body>
 </html>
+
 
 
