@@ -191,7 +191,12 @@ app.post('/get-snap-token', async (req, res) => {
   }
 });
 
-app.use(express.static('public'));
+const path = require('path');
+
+app.get('/pay', (req, res) => {
+    res.sendFile(path.join(__dirname, 'pay.html'));
+});
+
 
 // ✅ ROOT ENDPOINT
 app.get('/', (req, res) => {
@@ -225,4 +230,5 @@ app.listen(port, () => {
     console.log(`❌ Midtrans Error: ${midtransError}`);
   }
 });
+
 
