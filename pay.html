@@ -57,6 +57,26 @@
         }
     </script>
 
+    <script>
+      const url = new URLSearchParams(window.location.search);
+      const token = url.get("token");
+    
+      snap.pay(token, {
+        onClose: function() {
+          // Kirim status "closed" ke server
+          fetch("https://oleh2inpos-backend.onrender.com/payment-status", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ token, status: "closed" })
+          });
+    
+          // Tutup halaman otomatis
+          window.location.href = "about:blank";
+        }
+      });
+    </script>
+
 </body>
 </html>
+
 
