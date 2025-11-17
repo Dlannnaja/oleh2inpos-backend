@@ -197,6 +197,20 @@ app.get(['/pay', '/pay.html'], (req, res) => {
     res.sendFile(path.join(__dirname, 'pay.html'));
 });
 
+let paymentStatusMap = {}; // { token: "pending" | "closed" | "success" }
+
+app.post('/payment-status', (req, res) => {
+    const { token, status } = req.body;
+    paymentStatusMap[token] = status;
+    res.json({ success: true });
+});
+
+app.get('/payment-status/:token', (req, res) => {
+    const token = req.params.token;
+    const status = paymentStatusMap[token] || "pending";
+    res.json({ status });
+});
+
 
 // ✅ ROOT ENDPOINT
 app.get('/', (req, res) => {
@@ -230,6 +244,7 @@ app.listen(port, () => {
     console.log(`❌ Midtrans Error: ${midtransError}`);
   }
 });
+
 
 
 
