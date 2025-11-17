@@ -211,6 +211,29 @@ app.get('/payment-status/:token', (req, res) => {
     res.json({ status });
 });
 
+app.get('/midtrans-finish', async (req, res) => {
+    const orderId = req.query.order_id;
+    const statusCode = req.query.status_code;
+    const transactionStatus = req.query.transaction_status;
+
+    // Cek apakah transaksi ini berasal dari QR (PC mode)
+    // Kita simpan token / orderId PC mode ke map
+    const mode = qrTransactionMap[orderId] ? "pc" : "hp";
+
+    if (mode === "pc") {
+        // PC MODE (via QR)
+        // → kirim status ke kasir (PC)
+        paymentStatusMap[qrTransactionMap[orderId]] = "success";
+
+        // → HALAMAN HP ditutup
+        return res.redirect("about:blank");
+    }
+
+    // HP/TABLET MODE
+    // → redirect ke aplikasi kasir HP
+    return res.redirect(`https://oleh2inpos.web.app/finish?order_id=${orderId}&status=${transactionStatus}`);
+});
+
 
 // ✅ ROOT ENDPOINT
 app.get('/', (req, res) => {
@@ -244,6 +267,7 @@ app.listen(port, () => {
     console.log(`❌ Midtrans Error: ${midtransError}`);
   }
 });
+
 
 
 
