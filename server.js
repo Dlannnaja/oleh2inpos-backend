@@ -197,19 +197,21 @@ app.get(['/pay', '/pay.html'], (req, res) => {
     res.sendFile(path.join(__dirname, 'pay.html'));
 });
 
-let paymentStatusMap = {}; // { token: "pending" | "closed" | "success" }
+let paymentStatusMap = {};
 
 app.post('/payment-status', (req, res) => {
-    const { token, status } = req.body;
-    paymentStatusMap[token] = status;
-    res.json({ success: true });
+  const { token, status, result } = req.body;
+
+  paymentStatusMap[token] = { status, result };
+
+  res.json({ success: true });
 });
 
 app.get('/payment-status/:token', (req, res) => {
-    const token = req.params.token;
-    const status = paymentStatusMap[token] || "pending";
-    res.json({ status });
+  const data = paymentStatusMap[token] || { status: "pending" };
+  res.json(data);
 });
+
 
 app.get('/midtrans-finish', async (req, res) => {
     const orderId = req.query.order_id;
@@ -267,6 +269,7 @@ app.listen(port, () => {
     console.log(`❌ Midtrans Error: ${midtransError}`);
   }
 });
+
 
 
 
