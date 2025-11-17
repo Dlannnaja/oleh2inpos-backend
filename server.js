@@ -233,7 +233,7 @@ app.get('/midtrans-finish', async (req, res) => {
 
     // HP/TABLET MODE
     // → redirect ke aplikasi kasir HP
-    return res.redirect(`https://oleh2inpos.web.app/finish?order_id=${orderId}&status=${transactionStatus}`);
+    return res.redirect(`https://oleh2in-pos-v2.web.app//finish?order_id=${orderId}&status=${transactionStatus}`);
 });
 
 
@@ -269,6 +269,7 @@ app.listen(port, () => {
     console.log(`❌ Midtrans Error: ${midtransError}`);
   }
 });
+
 
 
 
