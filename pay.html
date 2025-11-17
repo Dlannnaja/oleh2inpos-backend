@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pembayaran Midtrans</title>
+
+    <!-- SNAP JAVASCRIPT -->
+    <script 
+        src="https://app.midtrans.com/snap/snap.js" 
+        data-client-key="Mid-client-fvOCSkh7us8t74ZF">
+    </script>
+
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background: #f7f7f7;
+            margin: 0;
+            padding: 0;
+            text-align: center;
+        }
+        .loader {
+            margin-top: 60px;
+            font-size: 20px;
+            color: #444;
+        }
+    </style>
+</head>
+
+<body>
+
+    <div class="loader">Sedang membuka pembayaran Midtrans...</div>
+
+    <script>
+        // Ambil token dari URL
+        const urlParams = new URLSearchParams(window.location.search);
+        const token = urlParams.get("token");
+
+        if (!token) {
+            document.body.innerHTML = "<h2>❌ Token tidak ditemukan.</h2>";
+        } else {
+            // Jalankan Snap
+            snap.pay(token, {
+                onSuccess: function(result) {
+                    console.log("SUKSES:", result);
+                },
+                onPending: function(result) {
+                    console.log("PENDING:", result);
+                },
+                onError: function(result) {
+                    console.log("ERROR:", result);
+                },
+                onClose: function() {
+                    console.log("DITUTUP USER");
+                }
+            });
+        }
+    </script>
+
+</body>
+</html>
