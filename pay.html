@@ -38,10 +38,36 @@
     }
 
   });
+
+  snap.pay(token, {
+
+  onSuccess: function(result) {
+    fetch("https://oleh2inpos-backend.onrender.com/payment-status", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ token, status: "success", result })
+    });
+
+    // Tutup halaman HP setelah kirim sukses
+    window.location.href = "about:blank";
+  },
+
+  onClose: function() {
+    fetch("https://oleh2inpos-backend.onrender.com/payment-status", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ token, status: "closed" })
+    });
+
+    window.location.href = "about:blank";
+  }
+});
+
 </script>
 
 <p style="text-align:center">Sedang membuka pembayaran Midtrans...</p>
 
 </body>
 </html>
+
 
