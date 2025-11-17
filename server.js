@@ -191,6 +191,8 @@ app.post('/get-snap-token', async (req, res) => {
   }
 });
 
+app.use(express.static('public'));
+
 // ✅ ROOT ENDPOINT
 app.get('/', (req, res) => {
   res.json({
@@ -223,3 +225,4 @@ app.listen(port, () => {
     console.log(`❌ Midtrans Error: ${midtransError}`);
   }
 });
+
