@@ -197,19 +197,31 @@ app.get(['/pay', '/pay.html'], (req, res) => {
     res.sendFile(path.join(__dirname, 'pay.html'));
 });
 
+let qrTransactionMap = {};
 let paymentStatusMap = {};
 
 app.post('/payment-status', (req, res) => {
   const { token, status, result } = req.body;
 
-  paymentStatusMap[token] = { status, result };
+  paymentStatusMap[token] = {
+  status,
+  result: result || null
+};
+
 
   res.json({ success: true });
 });
 
 app.get('/payment-status/:token', (req, res) => {
-  const data = paymentStatusMap[token] || { status: "pending" };
-  res.json(data);
+  const entry = paymentStatusMap[token];
+
+if (!entry) {
+  return res.json({ status: "pending", result: null });
+}
+
+res.json({
+  status: entry.status,
+  result: entry.result || null
 });
 
 
@@ -225,8 +237,16 @@ app.get('/midtrans-finish', async (req, res) => {
     if (mode === "pc") {
         // PC MODE (via QR)
         // → kirim status ke kasir (PC)
-        paymentStatusMap[qrTransactionMap[orderId]] = "success";
+        paymentStatusMap[qrTransactionMap[orderId]] = {
+        status: "success",
+        result: {
+        order_id: orderId,
+        transaction_status: transactionStatus,
+        redirect: "finish-endpoint"
+      }
+    };
 
+        delete qrTransactionMap[orderId];
         // → HALAMAN HP ditutup
         return res.redirect("about:blank");
     }
@@ -269,6 +289,7 @@ app.listen(port, () => {
     console.log(`❌ Midtrans Error: ${midtransError}`);
   }
 });
+
 
 
 
