@@ -191,6 +191,33 @@ app.post('/get-snap-token', async (req, res) => {
   }
 });
 
+// ✅ ENDPOINT VERIFIKASI KODE AKSES
+app.post('/verify-access-code', (req, res) => {
+  const { code } = req.body;
+
+  const serverCode = process.env.INDOCART_ACCESS_CODE;
+
+  if (!serverCode) {
+    return res.status(500).json({
+      success: false,
+      message: "Server: Kode akses belum diset."
+    });
+  }
+
+  if (code === serverCode) {
+    return res.json({
+      success: true,
+      message: "Kode akses benar"
+    });
+  }
+
+  return res.status(401).json({
+    success: false,
+    message: "Kode akses salah"
+  });
+});
+
+
 
 // ✅ ROOT ENDPOINT
 app.get('/', (req, res) => {
@@ -224,3 +251,4 @@ app.listen(port, () => {
     console.log(`❌ Midtrans Error: ${midtransError}`);
   }
 });
+
