@@ -6,7 +6,12 @@ const cors = require('cors');
 //  INIT APP
 // =========================
 const app = express();
+
+// FIX WAJIB UNTUK RENDER: proxy IP tetap akurat
+app.set("trust proxy", 1);
+
 const port = process.env.PORT || 4000;
+
 
 // =========================
 //  CORS CONFIG
@@ -374,4 +379,5 @@ app.listen(port, () => {
   console.log(`🌍 Environment: ${process.env.NODE_ENV || 'development'}`);
   console.log(`📊 Midtrans Status: ${snap ? '✅ Configured' : '❌ Not Configured'}`);
 });
+
 
