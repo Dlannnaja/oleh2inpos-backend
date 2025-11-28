@@ -103,6 +103,24 @@ async function verifyFirebaseIdToken(req, res, next) {
   }
 }
 
+async function verifyRole(requiredRoles) {
+  return async (req, res, next) => {
+  try {
+    const uid = req.user.uid;
+    const snap = await admin.database().ref("accounts/" + uid).once("value");
+    const data = snap.val();
+      if (!data || !data.role) return res.status(403).json({success:false, error:"Role tidak ditemukan"});
+      if (!requiredRoles.includes(data.role)) {
+      return res.status(403).json({success:false, error:"Akses ditolak"});
+      }
+      next();
+} catch(err) {
+    console.error(err);
+    res.status(500).json({success:false, error:"Server role check error"});
+    }
+  };
+}
+
 // =========================
 //  MIDTRANS CONFIG
 // =========================
@@ -356,3 +374,4 @@ app.listen(port, () => {
   console.log(`🌍 Environment: ${process.env.NODE_ENV || 'development'}`);
   console.log(`📊 Midtrans Status: ${snap ? '✅ Configured' : '❌ Not Configured'}`);
 });
+
