@@ -196,7 +196,7 @@ app.get("/test-midtrans", verifyFirebaseIdToken, async (req, res) => {
 });
 
 // =========================
-//  SNAP TOKEN (Protected)
+//  SNAP TOKEN (Protected + Server-side Validation)
 // =========================
 app.post('/get-snap-token', verifyFirebaseIdToken, async (req, res) => {
   try {
@@ -210,19 +210,55 @@ app.post('/get-snap-token', verifyFirebaseIdToken, async (req, res) => {
 
     const { transaction_details, item_details, customer_details } = req.body;
 
-    if (!transaction_details || !transaction_details.order_id || !transaction_details.gross_amount) {
+    // ====== VALIDASI FIELD WAJIB ======
+    if (!transaction_details || !transaction_details.order_id) {
       return res.status(400).json({
         success: false,
-        error: "order_id dan gross_amount wajib dikirim!"
+        error: "order_id wajib dikirim!"
       });
     }
 
+    if (!Array.isArray(item_details) || item_details.length === 0) {
+      return res.status(400).json({
+        success: false,
+        error: "item_details tidak boleh kosong"
+      });
+    }
+
+    // ==========================================
+    // 🔥 SERVER-SIDE TOTAL VALIDATION (WAJIB)
+    // ==========================================
+    let serverTotal = 0;
+
+    item_details.forEach(item => {
+      const price = Number(item.price);
+      const qty = Number(item.quantity || item.qty);
+
+      // Harga dan qty harus valid
+      if (isNaN(price) || isNaN(qty)) return;
+
+      // Qty harus integer positif
+      if (qty <= 0 || !Number.isInteger(qty)) return;
+
+      // Batas keamanan
+      if (price < -100000000 || price > 100000000) return;
+      if (qty > 100000) return;
+
+      serverTotal += price * qty;
+    });
+
+    // Total tidak boleh negatif
+    if (serverTotal < 0) serverTotal = 0;
+
+    console.log("💰 Server calculated total:", serverTotal);
+
+    // Abaikan gross_amount dari client sepenuhnya
     const parameter = {
       transaction_details: {
         order_id: transaction_details.order_id,
-        gross_amount: parseInt(transaction_details.gross_amount)
+        gross_amount: serverTotal
       },
-      item_details: item_details || [],
+      item_details: item_details,
       customer_details: customer_details || {
         first_name: "Customer",
         email: "customer@example.com",
@@ -230,12 +266,14 @@ app.post('/get-snap-token', verifyFirebaseIdToken, async (req, res) => {
       }
     };
 
+    // Buat transaksi Midtrans
     const transaction = await snap.createTransaction(parameter);
 
     res.json({
       success: true,
       token: transaction.token,
-      redirect_url: transaction.redirect_url
+      redirect_url: transaction.redirect_url,
+      server_total: serverTotal
     });
 
   } catch (error) {
@@ -248,9 +286,6 @@ app.post('/get-snap-token', verifyFirebaseIdToken, async (req, res) => {
   }
 });
 
-// =========================
-//  VERIFY ACCESS CODE
-// =========================
 app.post('/verify-access-code', verifyFirebaseIdToken, (req, res) => {
   const { code } = req.body;
   const serverCode = process.env.INDOCART_ACCESS_CODE;
@@ -311,3 +346,4 @@ app.listen(port, () => {
   console.log(`📊 Midtrans Status: ${snap ? '✅ Configured' : '❌ Not Configured'}`);
   if (midtransError) console.log(`❌ Midtrans Error: ${midtransError}`);
 });
+
