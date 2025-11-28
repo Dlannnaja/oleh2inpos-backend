@@ -2,6 +2,9 @@ require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
 
+// =========================
+//  INIT APP
+// =========================
 const app = express();
 const port = process.env.PORT || 4000;
 
@@ -21,6 +24,31 @@ const corsOptions = {
 
 app.use(cors(corsOptions));
 app.use(express.json());
+
+// =========================
+//  SECURITY MIDDLEWARES
+// =========================
+const helmet = require("helmet");
+const rateLimit = require("express-rate-limit");
+
+// Add secure HTTP headers
+app.use(helmet());
+
+// Global limiter (untuk seluruh request)
+const globalLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  max: 120,
+  standardHeaders: true,
+  legacyHeaders: false
+});
+app.use(globalLimiter);
+
+// Limiter khusus endpoint sensitif
+const sensitiveLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  max: 10,
+  message: { success: false, error: "Too many requests, try again later" }
+});
 
 // =========================
 //  FIREBASE ADMIN
@@ -64,7 +92,7 @@ async function verifyFirebaseIdToken(req, res, next) {
     const idToken = authHeader.split("Bearer ")[1];
     const decoded = await admin.auth().verifyIdToken(idToken);
 
-    req.user = decoded; // uid, email, etc.
+    req.user = decoded;
     next();
   } catch (error) {
     console.error("❌ Firebase Token Error:", error.message);
@@ -109,17 +137,12 @@ app.get('/health', (req, res) => {
     status: 'healthy',
     timestamp: new Date().toISOString(),
     midtrans_configured: !!snap,
-    midtrans_error: midtransError,
-    env_vars: {
-      MIDTRANS_SERVER_KEY: !!process.env.MIDTRANS_SERVER_KEY,
-      MIDTRANS_CLIENT_KEY: !!process.env.MIDTRANS_CLIENT_KEY,
-      NODE_ENV: process.env.NODE_ENV
-    }
+    midtrans_error: midtransError
   });
 });
 
 // =========================
-//  TEST
+//  TEST ENDPOINT
 // =========================
 app.get('/test', (req, res) => {
   res.json({
@@ -127,36 +150,33 @@ app.get('/test', (req, res) => {
     message: 'Backend is working!',
     timestamp: new Date().toISOString(),
     uptime: process.uptime(),
-    midtrans_status: snap ? 'configured' : 'not configured',
-    midtrans_error: midtransError
+    midtrans_status: snap ? 'configured' : 'not configured'
   });
 });
 
 // =========================
-//  CHECK ENV
+//  CHECK ENV (AMAN)
 // =========================
-// Aman → tidak tampilkan preview key lagi
 app.get('/check-env', (req, res) => {
   res.json({
     message: 'Checking environment variables on server',
     node_env: process.env.NODE_ENV,
     server_key_exists: !!process.env.MIDTRANS_SERVER_KEY,
     client_key_exists: !!process.env.MIDTRANS_CLIENT_KEY,
-    snap_initialized: !!snap,
-    midtrans_error: midtransError
+    snap_initialized: !!snap
   });
 });
 
 // =========================
-//  TEST MIDTRANS (Proteksi)
+//  TEST MIDTRANS (Protected)
 // =========================
-app.get("/test-midtrans", verifyFirebaseIdToken, async (req, res) => {
+app.get("/test-midtrans", sensitiveLimiter, verifyFirebaseIdToken, async (req, res) => {
   try {
     if (!snap) {
       return res.status(500).json({
         success: false,
         message: "Midtrans not configured",
-        error: midtransError || "Unknown error"
+        error: midtransError
       });
     }
 
@@ -176,7 +196,6 @@ app.get("/test-midtrans", verifyFirebaseIdToken, async (req, res) => {
     };
 
     const transaction = await snap.createTransaction(parameter);
-
     return res.json({
       success: true,
       message: "Midtrans test successful",
@@ -189,16 +208,15 @@ app.get("/test-midtrans", verifyFirebaseIdToken, async (req, res) => {
     return res.status(500).json({
       success: false,
       message: "Failed to test Midtrans",
-      error: error.message,
-      error_type: error.name
+      error: error.message
     });
   }
 });
 
 // =========================
-//  SNAP TOKEN (Protected + Server-side Validation)
+//  SNAP TOKEN (Protected + Validation + Rate Limit)
 // =========================
-app.post('/get-snap-token', verifyFirebaseIdToken, async (req, res) => {
+app.post('/get-snap-token', sensitiveLimiter, verifyFirebaseIdToken, async (req, res) => {
   try {
     if (!snap) {
       return res.status(500).json({
@@ -210,7 +228,6 @@ app.post('/get-snap-token', verifyFirebaseIdToken, async (req, res) => {
 
     const { transaction_details, item_details, customer_details } = req.body;
 
-    // ====== VALIDASI FIELD WAJIB ======
     if (!transaction_details || !transaction_details.order_id) {
       return res.status(400).json({
         success: false,
@@ -225,34 +242,28 @@ app.post('/get-snap-token', verifyFirebaseIdToken, async (req, res) => {
       });
     }
 
-    // ==========================================
-    // 🔥 SERVER-SIDE TOTAL VALIDATION (WAJIB)
-    // ==========================================
+    // ============================
+    //  SECURE SERVER-SIDE TOTAL
+    // ============================
     let serverTotal = 0;
 
     item_details.forEach(item => {
       const price = Number(item.price);
       const qty = Number(item.quantity || item.qty);
 
-      // Harga dan qty harus valid
       if (isNaN(price) || isNaN(qty)) return;
-
-      // Qty harus integer positif
       if (qty <= 0 || !Number.isInteger(qty)) return;
 
-      // Batas keamanan
       if (price < -100000000 || price > 100000000) return;
       if (qty > 100000) return;
 
       serverTotal += price * qty;
     });
 
-    // Total tidak boleh negatif
     if (serverTotal < 0) serverTotal = 0;
 
     console.log("💰 Server calculated total:", serverTotal);
 
-    // Abaikan gross_amount dari client sepenuhnya
     const parameter = {
       transaction_details: {
         order_id: transaction_details.order_id,
@@ -266,7 +277,6 @@ app.post('/get-snap-token', verifyFirebaseIdToken, async (req, res) => {
       }
     };
 
-    // Buat transaksi Midtrans
     const transaction = await snap.createTransaction(parameter);
 
     res.json({
@@ -280,13 +290,15 @@ app.post('/get-snap-token', verifyFirebaseIdToken, async (req, res) => {
     console.error("❌ MIDTRANS ERROR:", error);
     res.status(500).json({
       success: false,
-      error: error.message || "Failed to create transaction",
-      error_type: error.name
+      error: error.message
     });
   }
 });
 
-app.post('/verify-access-code', verifyFirebaseIdToken, (req, res) => {
+// =========================
+//  VERIFY ACCESS CODE
+// =========================
+app.post('/verify-access-code', sensitiveLimiter, verifyFirebaseIdToken, (req, res) => {
   const { code } = req.body;
   const serverCode = process.env.INDOCART_ACCESS_CODE;
 
@@ -319,8 +331,7 @@ app.get('/', (req, res) => {
     message: '🚀 INDOCART Backend Server is running!',
     timestamp: new Date().toISOString(),
     environment: process.env.NODE_ENV || 'development',
-    midtrans_configured: !!snap,
-    midtrans_error: midtransError
+    midtrans_configured: !!snap
   });
 });
 
@@ -344,6 +355,4 @@ app.listen(port, () => {
   console.log(`🚀 Server running on port ${port}`);
   console.log(`🌍 Environment: ${process.env.NODE_ENV || 'development'}`);
   console.log(`📊 Midtrans Status: ${snap ? '✅ Configured' : '❌ Not Configured'}`);
-  if (midtransError) console.log(`❌ Midtrans Error: ${midtransError}`);
 });
-
