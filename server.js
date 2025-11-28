@@ -5,34 +5,93 @@ const cors = require('cors');
 const app = express();
 const port = process.env.PORT || 4000;
 
-// ✅ CORS CONFIG
+// =========================
+//  CORS CONFIG
+// =========================
 const corsOptions = {
   origin: [
     'https://oleh2in-pos-v2.web.app',
     'http://localhost:4200',
     'http://localhost:3000',
-    'http://localhost:5173',
+    'http://localhost:5173'
   ],
   methods: ['GET', 'POST'],
-  allowedHeaders: ['Content-Type', 'Authorization'],
+  allowedHeaders: ['Content-Type', 'Authorization']
 };
+
 app.use(cors(corsOptions));
 app.use(express.json());
 
-// ✅ MIDTRANS CONFIG dengan safe loading
+// =========================
+//  FIREBASE ADMIN
+// =========================
+const admin = require('firebase-admin');
+
+if (process.env.FIREBASE_ADMIN_CREDENTIAL_BASE64) {
+  try {
+    const serviceJson = Buffer.from(
+      process.env.FIREBASE_ADMIN_CREDENTIAL_BASE64,
+      "base64"
+    ).toString("utf8");
+
+    admin.initializeApp({
+      credential: admin.credential.cert(JSON.parse(serviceJson)),
+      databaseURL: process.env.FIREBASE_DATABASE_URL
+    });
+
+    console.log("🔥 Firebase Admin initialized");
+  } catch (e) {
+    console.error("❌ Firebase Admin failed to init:", e);
+  }
+} else {
+  console.warn("⚠️ FIREBASE_ADMIN_CREDENTIAL_BASE64 missing");
+}
+
+// =========================
+//  MIDDLEWARE VERIFY TOKEN
+// =========================
+async function verifyFirebaseIdToken(req, res, next) {
+  try {
+    const authHeader = req.headers.authorization || "";
+
+    if (!authHeader.startsWith("Bearer ")) {
+      return res.status(401).json({
+        success: false,
+        error: "Unauthorized: Missing Bearer Token"
+      });
+    }
+
+    const idToken = authHeader.split("Bearer ")[1];
+    const decoded = await admin.auth().verifyIdToken(idToken);
+
+    req.user = decoded; // uid, email, etc.
+    next();
+  } catch (error) {
+    console.error("❌ Firebase Token Error:", error.message);
+    return res.status(401).json({
+      success: false,
+      error: "Unauthorized: Invalid Firebase Token"
+    });
+  }
+}
+
+// =========================
+//  MIDTRANS CONFIG
+// =========================
 let snap = null;
 let midtransError = null;
 
 try {
   const midtransClient = require('midtrans-client');
-  
+
   if (process.env.MIDTRANS_SERVER_KEY && process.env.MIDTRANS_CLIENT_KEY) {
     snap = new midtransClient.Snap({
       isProduction: false,
       serverKey: process.env.MIDTRANS_SERVER_KEY,
       clientKey: process.env.MIDTRANS_CLIENT_KEY
     });
-    console.log("✅ Midtrans Snap initialized successfully");
+
+    console.log("✅ Midtrans Snap initialized");
   } else {
     midtransError = "Environment variables not set";
     console.warn("⚠️ Midtrans environment variables missing");
@@ -42,7 +101,9 @@ try {
   console.error("❌ Failed to initialize Midtrans:", error.message);
 }
 
-// ✅ HEALTH CHECK
+// =========================
+//  HEALTH CHECK
+// =========================
 app.get('/health', (req, res) => {
   res.json({
     status: 'healthy',
@@ -57,7 +118,9 @@ app.get('/health', (req, res) => {
   });
 });
 
-// ✅ TEST ENDPOINT
+// =========================
+//  TEST
+// =========================
 app.get('/test', (req, res) => {
   res.json({
     success: true,
@@ -69,28 +132,25 @@ app.get('/test', (req, res) => {
   });
 });
 
-// ✅ CHECK ENV
+// =========================
+//  CHECK ENV
+// =========================
+// Aman → tidak tampilkan preview key lagi
 app.get('/check-env', (req, res) => {
   res.json({
     message: 'Checking environment variables on server',
     node_env: process.env.NODE_ENV,
     server_key_exists: !!process.env.MIDTRANS_SERVER_KEY,
-    server_key_length: process.env.MIDTRANS_SERVER_KEY?.length || 0,
-    server_key_preview: process.env.MIDTRANS_SERVER_KEY
-      ? process.env.MIDTRANS_SERVER_KEY.substring(0, 20) + '...'
-      : 'NOT_SET',
     client_key_exists: !!process.env.MIDTRANS_CLIENT_KEY,
-    client_key_length: process.env.MIDTRANS_CLIENT_KEY?.length || 0,
-    client_key_preview: process.env.MIDTRANS_CLIENT_KEY
-      ? process.env.MIDTRANS_CLIENT_KEY.substring(0, 20) + '...'
-      : 'NOT_SET',
     snap_initialized: !!snap,
     midtrans_error: midtransError
   });
 });
 
-// ✅ TEST MIDTRANS
-app.get("/test-midtrans", async (req, res) => {
+// =========================
+//  TEST MIDTRANS (Proteksi)
+// =========================
+app.get("/test-midtrans", verifyFirebaseIdToken, async (req, res) => {
   try {
     if (!snap) {
       return res.status(500).json({
@@ -106,12 +166,7 @@ app.get("/test-midtrans", async (req, res) => {
         gross_amount: 1000
       },
       item_details: [
-        {
-          id: "ITEM-1",
-          price: 1000,
-          quantity: 1,
-          name: "Testing Item"
-        }
+        { id: "ITEM-1", price: 1000, quantity: 1, name: "Testing Item" }
       ],
       customer_details: {
         first_name: "Test User",
@@ -140,13 +195,15 @@ app.get("/test-midtrans", async (req, res) => {
   }
 });
 
-// ✅ MAIN SNAP TOKEN ENDPOINT
-app.post('/get-snap-token', async (req, res) => {
+// =========================
+//  SNAP TOKEN (Protected)
+// =========================
+app.post('/get-snap-token', verifyFirebaseIdToken, async (req, res) => {
   try {
     if (!snap) {
       return res.status(500).json({
         success: false,
-        error: "Midtrans not configured. Please check server configuration.",
+        error: "Midtrans not configured.",
         details: midtransError
       });
     }
@@ -191,10 +248,11 @@ app.post('/get-snap-token', async (req, res) => {
   }
 });
 
-// ✅ ENDPOINT VERIFIKASI KODE AKSES
-app.post('/verify-access-code', (req, res) => {
+// =========================
+//  VERIFY ACCESS CODE
+// =========================
+app.post('/verify-access-code', verifyFirebaseIdToken, (req, res) => {
   const { code } = req.body;
-
   const serverCode = process.env.INDOCART_ACCESS_CODE;
 
   if (!serverCode) {
@@ -217,9 +275,9 @@ app.post('/verify-access-code', (req, res) => {
   });
 });
 
-
-
-// ✅ ROOT ENDPOINT
+// =========================
+//  ROOT
+// =========================
 app.get('/', (req, res) => {
   res.json({
     status: 'active',
@@ -231,7 +289,9 @@ app.get('/', (req, res) => {
   });
 });
 
-// ✅ ERROR HANDLER
+// =========================
+//  ERROR HANDLER
+// =========================
 app.use((err, req, res, next) => {
   console.error('❌ SERVER ERROR:', err);
   res.status(500).json({
@@ -242,13 +302,12 @@ app.use((err, req, res, next) => {
   });
 });
 
-// ✅ START SERVER
+// =========================
+//  START SERVER
+// =========================
 app.listen(port, () => {
   console.log(`🚀 Server running on port ${port}`);
   console.log(`🌍 Environment: ${process.env.NODE_ENV || 'development'}`);
   console.log(`📊 Midtrans Status: ${snap ? '✅ Configured' : '❌ Not Configured'}`);
-  if (midtransError) {
-    console.log(`❌ Midtrans Error: ${midtransError}`);
-  }
+  if (midtransError) console.log(`❌ Midtrans Error: ${midtransError}`);
 });
-
