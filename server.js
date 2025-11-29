@@ -197,6 +197,20 @@ app.post('/product/restock',
     res.json({ success:true, message:"Stok berhasil ditambahkan" });
 });
 
+app.post('/sales/add',
+  sensitiveLimiter,
+  verifyFirebaseIdToken,
+  verifyRole(['kasir','admin','owner']),
+  async (req, res) => {
+
+    const sale = req.body;
+    const id = "INV-" + Date.now();
+
+    await admin.database().ref(`sales/${id}`).set(sale);
+
+    res.json({ success:true, id });
+});
+
 app.post('/report/clear',
   sensitiveLimiter,
   verifyFirebaseIdToken,
@@ -348,9 +362,6 @@ app.post('/get-snap-token', sensitiveLimiter, verifyFirebaseIdToken, async (req,
       });
     }
 
-    // ============================
-    //  SECURE SERVER-SIDE TOTAL
-    // ============================
     let serverTotal = 0;
 
     item_details.forEach(item => {
@@ -401,9 +412,6 @@ app.post('/get-snap-token', sensitiveLimiter, verifyFirebaseIdToken, async (req,
   }
 });
 
-// =========================
-//  VERIFY ACCESS CODE
-// =========================
 app.post('/verify-access-code', sensitiveLimiter, (req, res) => {
   const { code } = req.body;
   
@@ -426,9 +434,6 @@ app.post('/verify-access-code', sensitiveLimiter, (req, res) => {
   }
 });
 
-// =========================
-//  ROOT
-// =========================
 app.get('/', (req, res) => {
   res.json({
     status: 'active',
@@ -439,9 +444,6 @@ app.get('/', (req, res) => {
   });
 });
 
-// =========================
-//  ERROR HANDLER
-// =========================
 app.use((err, req, res, next) => {
   console.error('❌ SERVER ERROR:', err);
   res.status(500).json({
@@ -452,16 +454,8 @@ app.use((err, req, res, next) => {
   });
 });
 
-// =========================
-//  START SERVER
-// =========================
 app.listen(port, () => {
   console.log(`🚀 Server running on port ${port}`);
   console.log(`🌍 Environment: ${process.env.NODE_ENV || 'development'}`);
   console.log(`📊 Midtrans Status: ${snap ? '✅ Configured' : '❌ Not Configured'}`);
 });
-
-
-
-
-
