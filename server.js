@@ -145,6 +145,70 @@ function verifyRole(allowedRoles = []) {
   };
 }
 
+app.post('/product/add',
+  sensitiveLimiter,
+  verifyFirebaseIdToken,
+  verifyRole(['owner', 'admin']),
+  async (req, res) => {
+
+    const { sku, name, price, qty, category } = req.body;
+
+    if (!sku || !name || !price || !qty) {
+      return res.status(400).json({ success:false, error:"Data tidak lengkap" });
+    }
+
+    await admin.database().ref(`products/${sku}`).set({
+      name,
+      price,
+      qty,
+      category,
+      updated_at: Date.now()
+    });
+
+    res.json({ success:true, message:"Produk berhasil ditambahkan" });
+});
+
+app.post('/product/restock',
+  sensitiveLimiter,
+  verifyFirebaseIdToken,
+  verifyRole(['owner', 'admin']),
+  async (req, res) => {
+
+    const { sku, qty } = req.body;
+
+    if (!sku || !qty) {
+      return res.status(400).json({ success:false, error:"Data tidak lengkap" });
+    }
+
+    const productRef = admin.database().ref(`products/${sku}`);
+    const snap = await productRef.once("value");
+
+    if (!snap.exists()) {
+      return res.status(404).json({ success:false, error:"Produk tidak ditemukan" });
+    }
+
+    const current = snap.val().qty || 0;
+
+    await productRef.update({
+      qty: current + qty,
+      updated_at: Date.now()
+    });
+
+    res.json({ success:true, message:"Stok berhasil ditambahkan" });
+});
+
+app.post('/report/clear',
+  sensitiveLimiter,
+  verifyFirebaseIdToken,
+  verifyRole(['owner']),
+  async (req, res) => {
+
+    await admin.database().ref("sales").remove();
+
+    res.json({ success:true, message:"Laporan berhasil dihapus" });
+});
+
+
 // =========================
 //  MIDTRANS CONFIG
 // =========================
@@ -396,6 +460,7 @@ app.listen(port, () => {
   console.log(`🌍 Environment: ${process.env.NODE_ENV || 'development'}`);
   console.log(`📊 Midtrans Status: ${snap ? '✅ Configured' : '❌ Not Configured'}`);
 });
+
 
 
 
