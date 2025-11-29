@@ -321,8 +321,9 @@ app.post('/get-snap-token', sensitiveLimiter, verifyFirebaseIdToken, async (req,
 // =========================
 //  VERIFY ACCESS CODE
 // =========================
-app.post('/verify-access-code', sensitiveLimiter, verifyFirebaseIdToken, (req, res) => {
+app.post('/verify-access-code', sensitiveLimiter, (req, res) => {
   const { code } = req.body;
+  
   const serverCode = process.env.INDOCART_ACCESS_CODE;
 
   if (!serverCode) {
@@ -333,16 +334,13 @@ app.post('/verify-access-code', sensitiveLimiter, verifyFirebaseIdToken, (req, r
   }
 
   if (code === serverCode) {
-    return res.json({
-      success: true,
-      message: "Kode akses benar"
+    return res.json({ success: true });
+  } else {
+    return res.status(401).json({
+      success: false,
+      message: "Kode akses salah."
     });
   }
-
-  return res.status(401).json({
-    success: false,
-    message: "Kode akses salah"
-  });
 });
 
 // =========================
@@ -379,5 +377,6 @@ app.listen(port, () => {
   console.log(`🌍 Environment: ${process.env.NODE_ENV || 'development'}`);
   console.log(`📊 Midtrans Status: ${snap ? '✅ Configured' : '❌ Not Configured'}`);
 });
+
 
 
