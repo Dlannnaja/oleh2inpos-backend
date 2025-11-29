@@ -444,6 +444,44 @@ app.get('/', (req, res) => {
   });
 });
 
+app.post("/signup", sensitiveLimiter, async (req, res) => {
+  try {
+    const { name, email, password, role } = req.body;
+
+    if (!name || !email || !password || !role) {
+      return res.status(400).json({
+        success: false,
+        message: "Data tidak lengkap"
+      });
+    }
+
+    // 1. Buat akun Firebase Auth
+    const userRecord = await admin.auth().createUser({
+      email,
+      password
+    });
+
+    const uid = userRecord.uid;
+
+    // 2. Simpan data akun ke Realtime Database
+    await admin.database().ref("accounts/" + uid).set({
+      name,
+      email,
+      role,
+      created_at: Date.now()
+    });
+
+    return res.json({ success: true, uid });
+
+  } catch (err) {
+    console.error("❌ SIGNUP ERROR:", err);
+    return res.status(500).json({
+      success: false,
+      message: err.message
+    });
+  }
+});
+
 app.use((err, req, res, next) => {
   console.error('❌ SERVER ERROR:', err);
   res.status(500).json({
@@ -459,3 +497,4 @@ app.listen(port, () => {
   console.log(`🌍 Environment: ${process.env.NODE_ENV || 'development'}`);
   console.log(`📊 Midtrans Status: ${snap ? '✅ Configured' : '❌ Not Configured'}`);
 });
+
