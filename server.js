@@ -58,27 +58,23 @@ const sensitiveLimiter = rateLimit({
 // =========================
 //  FIREBASE ADMIN
 // =========================
-const admin = require('firebase-admin');
+const admin = require("firebase-admin");
 
-if (process.env.FIREBASE_ADMIN_CREDENTIAL_BASE64) {
+if (!admin.apps.length) {
   try {
-    const serviceJson = Buffer.from(
-      process.env.FIREBASE_ADMIN_CREDENTIAL_BASE64,
-      "base64"
-    ).toString("utf8");
+    const serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_JSON);
 
     admin.initializeApp({
-      credential: admin.credential.cert(JSON.parse(serviceJson)),
+      credential: admin.credential.cert(serviceAccount),
       databaseURL: process.env.FIREBASE_DATABASE_URL
     });
 
     console.log("🔥 Firebase Admin initialized");
   } catch (e) {
-    console.error("❌ Firebase Admin failed to init:", e);
+    console.error("❌ Firebase Admin init failed:", e);
   }
-} else {
-  console.warn("⚠️ FIREBASE_ADMIN_CREDENTIAL_BASE64 missing");
 }
+
 
 // =========================
 //  MIDDLEWARE VERIFY TOKEN
@@ -497,4 +493,5 @@ app.listen(port, () => {
   console.log(`🌍 Environment: ${process.env.NODE_ENV || 'development'}`);
   console.log(`📊 Midtrans Status: ${snap ? '✅ Configured' : '❌ Not Configured'}`);
 });
+
 
