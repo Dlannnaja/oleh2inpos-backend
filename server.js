@@ -196,16 +196,35 @@ app.post('/product/restock',
 app.post('/sales/add',
   sensitiveLimiter,
   verifyFirebaseIdToken,
-  verifyRole(['kasir','admin','owner']),
+  verifyRole(['kasir']),
   async (req, res) => {
 
     const sale = req.body;
     const id = "INV-" + Date.now();
 
+    // Kurangi stok
+    for (const item of sale.items) {
+
+      const productRef = admin.database().ref(`products/${item.sku}`);
+      const snap = await productRef.once("value");
+
+      if (!snap.exists()) continue;
+
+      const current = snap.val().qty || 0;
+      const newQty = Math.max(0, current - item.qty);
+
+      await productRef.update({
+        qty: newQty,
+        updated_at: Date.now()
+      });
+    }
+
+    // Simpan transaksi
     await admin.database().ref(`sales/${id}`).set(sale);
 
     res.json({ success:true, id });
 });
+
 
 app.post('/report/clear',
   sensitiveLimiter,
@@ -493,5 +512,6 @@ app.listen(port, () => {
   console.log(`🌍 Environment: ${process.env.NODE_ENV || 'development'}`);
   console.log(`📊 Midtrans Status: ${snap ? '✅ Configured' : '❌ Not Configured'}`);
 });
+
 
 
